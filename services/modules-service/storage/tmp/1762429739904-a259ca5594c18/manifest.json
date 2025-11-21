@@ -1,0 +1,60 @@
+{
+  "slug": "events-client",
+  "name": "Events (Client)",
+  "version": "1.1.2",
+  "type": "client",
+  "description": "Client-side events manager",
+  "entryClient": "./client.js",
+  "ui": {
+    "clientSidebarRoute": "/client/events",
+    "clientSidebarLabel": "Evenimente",
+    "clientHostPath": "/client/modules/host/events-client",
+    "settingsHostPath": "/admin/modules/host/events-client/settings"
+  },
+  "permissions": [
+    "auth:required",
+    "role:client|admin"
+  ],
+  "assets": {
+    "client": "client.js"
+  },
+  "config": {
+    "schema": {
+      "apiBase": { "type": "string", "default": "http://localhost:4003", "label": "Events API Base" },
+      "auth": {
+        "type": "object",
+        "label": "Auth",
+        "properties": {
+          "strategy": { "type": "string", "enum": ["cookies", "bearer"], "default": "cookies" },
+          "bearerVar": { "type": "string", "default": "window.__AUTH_TOKEN__", "label": "Global Bearer var (if bearer)" }
+        }
+      },
+      "filters": {
+        "type": "object",
+        "label": "Default Filters",
+        "properties": {
+          "status": { "type": "string", "enum": ["", "DRAFT", "PLANNING", "ACTIVE", "COMPLETED", "CANCELED"], "default": "" },
+          "pageSize": { "type": "number", "default": 20 }
+        }
+      },
+      "ui": {
+        "type": "object",
+        "label": "UI",
+        "properties": {
+          "hideSections": {
+            "type": "array",
+            "items": { "type": "string", "enum": ["tasks", "invitations", "messages", "attachments"] },
+            "default": []
+          },
+          "optimisticUpdates": { "type": "boolean", "default": true },
+          "notifications": { "type": "boolean", "default": false },
+          "locale": { "type": "string", "default": "ro" }
+        }
+      }
+    }
+  },
+  "compat": {
+    "minHostVersion": "1.0.0",
+    "csp": { "requires": ["fetch-self", "inline-style"] }
+  }
+}

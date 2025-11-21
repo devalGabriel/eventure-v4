@@ -1,0 +1,56 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model Notification {
+  id           String   @id @default(uuid())
+  // legăm notificarea de utilizatorul din AUTH (authUserId ca string/UUID)
+  authUserId   String   @db.VarChar(191)
+  // opțional, multi-tenant
+  tenantId     String?  @db.VarChar(191)
+
+  title        String    @db.VarChar(255)
+  body         String    @db.Text
+  data         Json?
+  // categorii utile pentru filtru UI
+  type         String?   @db.VarChar(64) // ex: "SYSTEM" | "EVENT" | "PAYMENT"
+  channel      String?   @db.VarChar(32) // ex: "WS" | "EMAIL" | "PUSH"
+
+  status       String    @default("NEW") @db.VarChar(32) // NEW | DELIVERED | READ | FAILED
+  readAt       DateTime?
+  deliveredAt  DateTime?
+
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@index([authUserId, status])
+  @@index([tenantId])
+}
+
+// opțional, pentru push mobil / webpush pe viitor
+model DeviceToken {
+  id          String   @id @default(uuid())
+  authUserId  String   @db.VarChar(191)
+  provider    String   @db.VarChar(32) // FCM | APNS | WEBPUSH
+  token       String   @db.Text
+  createdAt   DateTime @default(now())
+
+  @@index([authUserId])
+}
+
+// opțional, log de livrare (retry, erori, etc.)
+model DeliveryAttempt {
+  id             String   @id @default(uuid())
+  notificationId String   @db.VarChar(191)
+  channel        String   @db.VarChar(32) // WS | EMAIL | PUSH
+  success        Boolean
+  error          String?  @db.Text
+  attemptedAt    DateTime @default(now())
+
+  @@index([notificationId])
+}

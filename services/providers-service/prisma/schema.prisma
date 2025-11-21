@@ -1,0 +1,398 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+
+// ENUMS
+
+enum Currency {
+  RON
+  EUR
+  USD
+}
+
+enum ProviderProfileStatus {
+  INCOMPLETE
+  PENDING_REVIEW
+  ACTIVE
+  SUSPENDED
+  DELISTED
+}
+
+enum OfferStatus {
+  DRAFT
+  ACTIVE
+  ARCHIVED
+}
+
+enum PackageType {
+  SINGLE_EVENT
+  MULTI_DAY
+  SUBSCRIPTION
+}
+
+enum AvailabilityStatus {
+  AVAILABLE
+  LIMITED
+  BOOKED
+}
+
+enum ReviewVisibility {
+  PRIVATE        // vizibil doar provider + admin (ex: note interne)
+  PUBLIC         // vizibil și în marketplace
+}
+
+enum GroupSharePolicy {
+  MANUAL   // owner setează manual procent/sumă per membru
+  EQUAL    // toți membrii activi împart egal
+}
+
+enum GroupShareMode {
+  NONE          // nu are regulă proprie, se bazează pe politica de grup
+  PERCENTAGE    // shareValue = procent din încasare (ex: 25.00 = 25%)
+  FIXED_AMOUNT  // shareValue = sumă fixă per eveniment (în moneda evenimentului)
+}
+
+// 🔽 NOU – tip de ownership pentru servicii (solo vs grup)
+enum ServiceOwnershipType {
+  SOLO
+  GROUP
+}
+
+// 🔽 NOU – roluri clare în grup
+enum GroupMemberRole {
+  ADMIN
+  MEMBER
+  MEMBER_NO_CHAT
+}
+
+
+// MODELE CENTRALE
+
+model ProviderProfile {
+  id           Int                    @id @default(autoincrement())
+  userId       Int                    @unique       // 1:1 cu USERS
+  status       ProviderProfileStatus  @default(INCOMPLETE)
+  isWatchlisted Boolean               @default(false)
+
+  displayName  String?
+  legalName    String?
+  taxId        String?
+  email        String?
+  phone        String?
+  website      String?
+  country      String?
+  city         String?
+  address      String?
+  description  String?
+
+
+  createdAt    DateTime               @default(now())
+  updatedAt    DateTime               @updatedAt
+
+  // Legături
+  categories   ProviderProfileCategory[]
+  tags         ProviderProfileTag[]
+  offers       ServiceOffer[]
+  packages     ServicePackage[]
+  availability ProviderAvailability[]
+  groups       ProviderGroup[]
+  reviews      ProviderReview[]
+  groupMembers ProviderGroupMember[]
+    adminNotes   ProviderAdminNote[]
+
+  @@index([city])
+  @@index([status])
+}
+
+model ProviderAdminNote {
+  id          Int             @id @default(autoincrement())
+  providerId  Int
+  provider    ProviderProfile @relation(fields: [providerId], references: [id], onDelete: Cascade)
+
+  adminUserId Int             // id-ul userului ADMIN (din auth/users)
+  adminName   String?         // optional, pentru afișare rapidă
+  note        String          // conținutul notei
+
+  createdAt   DateTime        @default(now())
+
+  @@index([providerId])
+  @@index([adminUserId])
+}
+// TAXONOMIE – administrată de ADMIN
+
+model ProviderCategory {
+  id          Int                   @id @default(autoincrement())
+  slug        String                @unique
+  name        String
+  description String?
+  sortOrder   Int                   @default(0)
+  isActive    Boolean               @default(true)
+  createdAt   DateTime              @default(now())
+  updatedAt   DateTime              @updatedAt
+
+  subcategories ProviderSubcategory[]
+}
+
+model ProviderSubcategory {
+  id          Int                   @id @default(autoincrement())
+  categoryId  Int
+  slug        String                @unique
+  name        String
+  description String?
+  sortOrder   Int                   @default(0)
+  isActive    Boolean               @default(true)
+  createdAt   DateTime              @default(now())
+  updatedAt   DateTime              @updatedAt
+
+  category    ProviderCategory      @relation(fields: [categoryId], references: [id])
+  tags        ProviderTag[]
+  profileLinks ProviderProfileCategory[]
+  serviceOffers ServiceOffer[]      // 🔽 servicii clasificate direct pe subcategorie
+
+  @@index([categoryId])
+}
+
+model ProviderTag {
+  id             Int                @id @default(autoincrement())
+  subcategoryId  Int
+  slug           String             @unique
+  label          String
+  isActive       Boolean            @default(true)
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+
+  subcategory    ProviderSubcategory @relation(fields: [subcategoryId], references: [id])
+  profileTags    ProviderProfileTag[]
+  serviceOfferTags ServiceOfferTag[]
+
+  @@index([subcategoryId])
+}
+
+// Legături profil ↔ taxonomie
+
+model ProviderProfileCategory {
+  id               Int              @id @default(autoincrement())
+  providerProfileId Int
+  subcategoryId    Int
+
+  providerProfile  ProviderProfile  @relation(fields: [providerProfileId], references: [id])
+  subcategory      ProviderSubcategory @relation(fields: [subcategoryId], references: [id])
+
+  @@unique([providerProfileId, subcategoryId])
+  @@index([subcategoryId])
+}
+
+model ProviderProfileTag {
+  id               Int              @id @default(autoincrement())
+  providerProfileId Int
+  tagId            Int
+
+  providerProfile  ProviderProfile  @relation(fields: [providerProfileId], references: [id])
+  tag              ProviderTag      @relation(fields: [tagId], references: [id])
+
+  @@unique([providerProfileId, tagId])
+  @@index([tagId])
+}
+
+// SERVICII ATOMICE
+
+model ServiceOffer {
+  id                Int               @id @default(autoincrement())
+  providerProfileId Int
+  subcategoryId     Int?
+  groupId           Int?              // 🔽 grupul care poate livra serviciul
+  title             String
+  description       String?
+  basePrice         Decimal?          @db.Decimal(10, 2)
+  currency          Currency?         @default(RON)
+  pricingUnit       String?
+  isPublic          Boolean           @default(true)
+  status            OfferStatus       @default(DRAFT)
+
+  // Parametri operaționali
+  durationMinutes   Int?
+  canOverlap        Boolean           @default(false)
+  maxEventsPerDay   Int?
+  maxGuests         Int?
+
+  // 🔽 NOU – tip ownership (solo vs grup)
+  ownershipType     ServiceOwnershipType @default(SOLO)
+
+  // 🔽 NOU – costuri de bază pentru validarea pachetelor (anti-pierdere)
+  baseCostPerHour   Decimal?          @db.Decimal(10, 2) // cost/oră
+  baseFixedCost     Decimal?          @db.Decimal(10, 2) // cost fix (transport, logistică)
+  minMarginPercent  Int?                             // marja minimă dorită (ex: 10)
+
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+
+  providerProfile   ProviderProfile   @relation(fields: [providerProfileId], references: [id])
+  subcategory       ProviderSubcategory? @relation(fields: [subcategoryId], references: [id])
+  group             ProviderGroup?    @relation(fields: [groupId], references: [id])  // grup care livrează serviciul
+
+  packageItems      ServicePackageItem[]
+  tags              ServiceOfferTag[]
+
+  // 🔽 NOU – pachete direct sub serviciu (variante ale serviciului)
+  servicePackages   ServicePackage[]
+
+  // 🔽 NOU – membri de grup asociați acestui serviciu
+  groupMembers      ProviderGroupMember[]
+
+  @@index([providerProfileId])
+  @@index([subcategoryId])
+  @@index([status])
+  @@index([groupId])
+}
+
+
+// JOIN pentru tag-uri pe serviciu
+model ServiceOfferTag {
+  id            Int           @id @default(autoincrement())
+  serviceOfferId Int
+  tagId         Int
+
+  serviceOffer  ServiceOffer  @relation(fields: [serviceOfferId], references: [id])
+  tag           ProviderTag   @relation(fields: [tagId], references: [id])
+
+  @@unique([serviceOfferId, tagId])
+  @@index([tagId])
+}
+
+// PACHETE DE SERVICII
+
+model ServicePackage {
+  id                Int             @id @default(autoincrement())
+  providerProfileId Int
+  type              PackageType     @default(SINGLE_EVENT)
+  name              String
+  description       String?
+  basePrice         Float?        
+  currency          Currency?       @default(RON)
+  isPublic          Boolean         @default(true)
+  internalOnly      Boolean         @default(false)   // doar pentru negocieri interne / custom
+
+  // 🔽 NOU – legătură directă cu un serviciu (variantă a serviciului)
+  serviceOfferId    Int?
+  serviceOffer      ServiceOffer?   @relation(fields: [serviceOfferId], references: [id])
+
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+
+  providerProfile   ProviderProfile @relation(fields: [providerProfileId], references: [id])
+  items             ServicePackageItem[]
+
+  @@index([providerProfileId])
+  @@index([serviceOfferId])
+}
+
+model ServicePackageItem {
+  id             Int             @id @default(autoincrement())
+  packageId      Int
+  serviceOfferId Int
+  quantity       Int             @default(1)
+  overridePrice  Float?
+
+  package        ServicePackage  @relation(fields: [packageId], references: [id])
+  serviceOffer   ServiceOffer    @relation(fields: [serviceOfferId], references: [id])
+
+  @@unique([packageId, serviceOfferId])
+  @@index([serviceOfferId])
+}
+
+// GRUPURI (FORMAȚII, ECHIPE)
+
+model ProviderGroup {
+  id                Int             @id @default(autoincrement())
+  providerProfileId Int
+  name              String
+  description       String?
+  isActive          Boolean         @default(true)
+
+  sharePolicy       GroupSharePolicy @default(MANUAL)
+
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+
+  providerProfile   ProviderProfile @relation(fields: [providerProfileId], references: [id])
+  members           ProviderGroupMember[]
+
+  // 🔽 servicii asociate grupului (ex: "Trupa X – full band")
+  service           ServiceOffer[]
+
+  @@index([providerProfileId])
+}
+
+model ProviderGroupMember {
+  id                Int             @id @default(autoincrement())
+  groupId           Int
+  providerProfileId Int
+  serviceOfferId    Int             // 🔴 OBLIGATORIU – membrul este definit prin serviciul din catalog
+  specializationTag String?         // ex: "pianist", "vocal", "MC" – în completarea serviciului
+  role              GroupMemberRole @default(MEMBER)
+  shareMode         GroupShareMode  @default(NONE)
+  shareValue        Float?          // procent sau sumă fixă, în funcție de shareMode
+  isActive          Boolean         @default(true)
+
+  group             ProviderGroup   @relation(fields: [groupId], references: [id])
+  providerProfile   ProviderProfile @relation(fields: [providerProfileId], references: [id])
+  serviceOffer      ServiceOffer    @relation(fields: [serviceOfferId], references: [id])
+
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+
+  @@index([groupId])
+  @@index([providerProfileId])
+  @@index([serviceOfferId])
+
+  // NU vrem același serviciu adăugat de două ori în același grup
+  @@unique([groupId, providerProfileId , serviceOfferId])
+}
+
+
+// DISPONIBILITATE
+
+model ProviderAvailability {
+  id                Int                @id @default(autoincrement())
+  providerProfileId Int
+  dateFrom          DateTime
+  dateTo            DateTime
+  status            AvailabilityStatus @default(BOOKED)
+  note              String?
+
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+
+  providerProfile   ProviderProfile    @relation(fields: [providerProfileId], references: [id])
+
+  @@index([providerProfileId])
+  @@index([dateFrom])
+  @@index([dateTo])
+}
+
+// REVIEW
+
+model ProviderReview {
+  id                Int               @id @default(autoincrement())
+  providerProfileId Int
+  clientUserId      Int               // cine a dat review
+  eventId           Int?              // evenimentul pentru care e review-ul (din events-service)
+  rating            Int               // 1–5
+  comment           String?
+  visibility        ReviewVisibility  @default(PUBLIC)
+
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+
+  providerProfile   ProviderProfile   @relation(fields: [providerProfileId], references: [id])
+
+  @@index([providerProfileId])
+  @@index([clientUserId])
+  @@index([eventId])
+}

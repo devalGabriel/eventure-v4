@@ -1,0 +1,150 @@
+{
+  "info": {
+    "name": "events-service",
+    "_postman_id": "events-collection",
+    "description": "CRUD Events + Tasks + Invitations + Messages + Attachments",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Health",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": { "raw": "{{baseUrl}}/health", "host": ["{{baseUrl}}"], "path": ["health"] }
+      }
+    },
+    {
+      "name": "Events - Create",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Authorization", "value": "Bearer {{token}}"}
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"Gabriel Wedding\",\n  \"type\": \"wedding\",\n  \"description\": \"Demo event\",\n  \"startDate\": \"2026-06-20T15:00:00.000Z\",\n  \"location\": \"Bucuresti\",\n  \"currency\": \"RON\"\n}"
+        },
+        "url": { "raw": "{{baseUrl}}/events", "host": ["{{baseUrl}}"], "path": ["events"] }
+      }
+    },
+    {
+      "name": "Events - List (by role)",
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "Authorization", "value": "Bearer {{token}}"}],
+        "url": { "raw": "{{baseUrl}}/events?page=1&pageSize=20", "host": ["{{baseUrl}}"], "path": ["events"], "query": [
+          { "key": "page", "value": "1" },
+          { "key": "pageSize", "value": "20" }
+        ]}
+      }
+    },
+    {
+      "name": "Events - Get by ID",
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "Authorization", "value": "Bearer {{token}}"}],
+        "url": { "raw": "{{baseUrl}}/events/:id", "host": ["{{baseUrl}}"], "path": ["events", ":id"] }
+      }
+    },
+    {
+      "name": "Events - Update",
+      "request": {
+        "method": "PUT",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Authorization", "value": "Bearer {{token}}"}
+        ],
+        "body": { "mode": "raw", "raw": "{ \"status\": \"PLANNING\" }" },
+        "url": { "raw": "{{baseUrl}}/events/:id", "host": ["{{baseUrl}}"], "path": ["events", ":id"] }
+      }
+    },
+    {
+      "name": "Events - Delete (DRAFT only)",
+      "request": {
+        "method": "DELETE",
+        "header": [{ "key": "Authorization", "value": "Bearer {{token}}"}],
+        "url": { "raw": "{{baseUrl}}/events/:id", "host": ["{{baseUrl}}"], "path": ["events", ":id"] }
+      }
+    },
+    {
+      "name": "Tasks - Add",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Authorization", "value": "Bearer {{token}}"}
+        ],
+        "body": { "mode": "raw", "raw": "{ \"title\": \"Confirm fotograful\", \"dueDate\": \"2026-05-20T00:00:00.000Z\" }" },
+        "url": { "raw": "{{baseUrl}}/events/:id/tasks", "host": ["{{baseUrl}}"], "path": ["events", ":id", "tasks"] }
+      }
+    },
+    {
+      "name": "Tasks - Update",
+      "request": {
+        "method": "PUT",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Authorization", "value": "Bearer {{token}}"}
+        ],
+        "body": { "mode": "raw", "raw": "{ \"status\": \"DONE\" }" },
+        "url": { "raw": "{{baseUrl}}/tasks/:taskId", "host": ["{{baseUrl}}"], "path": ["tasks", ":taskId"] }
+      }
+    },
+    {
+      "name": "Invitations - Invite provider",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Authorization", "value": "Bearer {{token}}"}
+        ],
+        "body": { "mode": "raw", "raw": "{ \"invitedId\": \"provider_1\", \"role\": \"PROVIDER\", \"message\": \"Te invit la eveniment\" }" },
+        "url": { "raw": "{{baseUrl}}/events/:id/invitations", "host": ["{{baseUrl}}"], "path": ["events", ":id", "invitations"] }
+      }
+    },
+    {
+      "name": "Invitations - Respond",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Authorization", "value": "Bearer {{token}}"}
+        ],
+        "body": { "mode": "raw", "raw": "{ \"status\": \"ACCEPTED\" }" },
+        "url": { "raw": "{{baseUrl}}/events/:id/invitations/:invId/respond", "host": ["{{baseUrl}}"], "path": ["events", ":id", "invitations", ":invId", "respond"] }
+      }
+    },
+    {
+      "name": "Messages - Post",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Authorization", "value": "Bearer {{token}}"}
+        ],
+        "body": { "mode": "raw", "raw": "{ \"body\": \"Salut, confirm oferta\" }" },
+        "url": { "raw": "{{baseUrl}}/events/:id/messages", "host": ["{{baseUrl}}"], "path": ["events", ":id", "messages"] }
+      }
+    },
+    {
+      "name": "Attachments - Add metadata",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Authorization", "value": "Bearer {{token}}"}
+        ],
+        "body": { "mode": "raw", "raw": "{ \"filename\": \"contract.pdf\", \"mimeType\": \"application/pdf\", \"sizeBytes\": 123456, \"url\": \"https://files.local/contracts/1.pdf\" }" },
+        "url": { "raw": "{{baseUrl}}/events/:id/attachments", "host": ["{{baseUrl}}"], "path": ["events", ":id", "attachments"] }
+      }
+    }
+  ],
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": { "type": "text/javascript", "exec": [] }
+    }
+  ]
+}

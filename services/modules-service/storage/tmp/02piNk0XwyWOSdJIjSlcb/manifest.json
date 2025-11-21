@@ -1,0 +1,13 @@
+{
+  "name": "Hello World Module",
+  "slug": "hello-world",
+  "version": "1.0.0",
+  "type": "ui",
+  "entryClient": "./client.js",
+  "configSchema": {
+    "type": "object",
+    "properties": {
+      "greeting": { "type": "string", "title": "Greeting", "default": "Hello world" }
+    }
+  }
+}

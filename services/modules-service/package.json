@@ -1,0 +1,29 @@
+{
+  "name": "modules-service",
+  "version": "1.0.0",
+  "type": "module",
+  "main": "src/index.js",
+  "scripts": {
+    "dev": "node src/index.js",
+    "prisma:gen": "prisma generate",
+    "prisma:migrate": "prisma migrate dev",
+    "start": "node src/index.js",
+    "start:logged": "node src/index.js >> ../.logs/modules-service.log 2>&1"
+  },
+  "dependencies": {
+    "@fastify/cors": "^11.1.0",
+    "@fastify/multipart": "^9.3.0",
+    "@fastify/static": "^8.3.0",
+    "@prisma/client": "^5.22.0",
+    "adm-zip": "^0.5.12",
+    "ajv": "^8.17.1",
+    "better-sqlite3": "^12.4.1",
+    "dotenv": "^17.2.3",
+    "fastify": "^5.6.2",
+    "fastify-plugin": "^5.1.0",
+    "nanoid": "^5.0.7"
+  },
+  "devDependencies": {
+    "prisma": "^5.20.0"
+  }
+}

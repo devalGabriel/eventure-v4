@@ -1,0 +1,23 @@
+{
+  "name": "People Manager (Client)",
+  "slug": "people-client",
+  "version": "1.0.1",
+  "type": "ui",
+  "entryClient": "./client.js",
+  "ui": {
+    "clientSidebarRoute": {
+      "label": "People",
+      "href": "/client/modules/host/people-client"
+    }
+  },
+  "configSchema": {
+    "type": "object",
+    "properties": {
+      "title": { "type": "string", "title": "Page title", "default": "People" }
+    }
+  },
+  "backend": {
+    "entry": "./backend.js",
+    "migrations": "./migrations.sql"
+  }
+}

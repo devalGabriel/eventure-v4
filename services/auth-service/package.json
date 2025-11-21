@@ -1,0 +1,49 @@
+{
+  "name": "auth-service",
+  "version": "1.0.0",
+  "description": "",
+  "type": "module",
+  "main": "src/index.js",
+  "scripts": {
+    "dev": "nodemon src/index.js",
+    "start": "node src/index.js",
+    "start:logged": "node src/index.js >> ../.logs/auth-service.log 2>&1",
+    "db:init": "npx prisma init --datasource-provider mysql",
+    "db:push": "npx prisma db push",
+    "db:push:test": "dotenv -e .env.test -- npx prisma db push --skip-generate --force-reset",
+    "db:studio": "npx prisma studio",
+    "db:gen": "npx prisma generate",
+    "db:gen:test": "dotenv -e .env.test -- npx prisma generate",
+    "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js --runInBand",
+    "test:watch": "pnpm test -- --watchAll"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "packageManager": "pnpm@10.14.0",
+  "dependencies": {
+    "@prisma/client": "^6.18.0",
+    "bcrypt": "^6.0.0",
+    "cookie-parser": "^1.4.7",
+    "cors": "^2.8.5",
+    "dotenv": "^17.2.3",
+    "express": "^5.1.0",
+    "jsonwebtoken": "^9.0.2",
+    "zod": "^4.1.12"
+  },
+  "devDependencies": {
+    "@jest/globals": "^30.2.0",
+    "dotenv-cli": "^10.0.0",
+    "jest": "^30.2.0",
+    "nodemon": "^3.1.10",
+    "prisma": "^6.18.0",
+    "supertest": "^7.1.4"
+  },
+  "jest": {
+    "testEnvironment": "node",
+    "setupFiles": [
+      "<rootDir>/tests/setup.js"
+    ],
+    "testMatch": ["**/tests/**/*.test.js"]
+  }
+}

@@ -1,0 +1,37 @@
+{
+  "name": "events-service",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node --watch src/index.js",
+    "start": "node src/index.js",
+    "start:logged": "node src/index.js >> ../.logs/events-service.log 2>&1",
+    "prisma:generate": "prisma generate",
+    "prisma:push": "prisma db push",
+    "prisma:migrate": "prisma migrate dev --name init_events",
+    "prisma:deploy": "prisma migrate deploy",
+    "seed": "node prisma/seed.js",
+    "db:reset": "prisma migrate reset --force && npm run seed"
+  },
+  "dependencies": {
+    "@fastify/cors": "^11.1.0",
+    "@fastify/helmet": "^12.0.1",
+    "@fastify/rate-limit": "^10.3.0",
+    "@prisma/client": "^5.19.1",
+    "cookie-parser": "^1.4.7",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^5.1.0",
+    "fastify": "^5.6.1",
+    "fastify-plugin": "^5.1.0",
+    "jose": "^5.9.3",
+    "nats": "^2.25.0",
+    "pino": "^9.5.0",
+    "pino-pretty": "^11.2.2",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "prisma": "^5.19.1"
+  }
+}

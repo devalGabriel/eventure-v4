@@ -1,0 +1,14 @@
+{
+  "name": "Quotes Board",
+  "slug": "quotes-board",
+  "version": "1.0.0",
+  "type": "ui",
+  "entryClient": "./client.js",
+  "configSchema": {
+    "type": "object",
+    "properties": {
+      "title": { "type": "string", "title": "Board title", "default": "My Quotes" },
+      "allowAdd": { "type": "boolean", "title": "Allow adding quotes", "default": true }
+    }
+  }
+}

@@ -1,0 +1,76 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model UserProfile {
+  id           String   @id @default(uuid())
+  authUserId   String   @unique        // id din AUTH service
+  email        String   @unique
+  fullName     String
+  phone        String?
+  locale       String?  @default("ro-RO")
+  avatarUrl    String?
+  isActive     Boolean  @default(true)
+  roles        Role[]   // implicit many-to-many
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  deletedAt    DateTime?
+
+  @@index([email])
+}
+
+model Role {
+  id        Int            @id @default(autoincrement())
+  name      RoleName       @unique
+  users     UserProfile[]  // implicit many-to-many
+  createdAt DateTime       @default(now())
+}
+
+enum RoleName {
+  ADMIN
+  CLIENT
+  PROVIDER
+}
+
+model OutboxEvent {
+  id          String       @id @default(cuid())
+  topic       String
+  payload     Json
+  status      OutboxStatus @default(PENDING)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  publishedAt DateTime?
+  attempts    Int          @default(0)
+
+  @@index([status, createdAt])
+}
+
+enum OutboxStatus {
+  PENDING
+  PUBLISHED
+  FAILED
+}
+
+model UserProfileAudit {
+  id          String   @id @default(cuid())
+  userId      String
+  actorId     String?
+  event       AuditEvent
+  changedKeys Json      // JSON array: ["fullName","phone",...]
+  before      Json?
+  after       Json?
+  at          DateTime @default(now())
+
+  @@index([userId, at])
+}
+
+enum AuditEvent {
+  PROFILE_UPDATED
+  ROLES_UPDATED
+  USER_DELETED
+}

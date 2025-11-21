@@ -1,0 +1,32 @@
+{
+  "name": "providers-service",
+  "version": "1.0.0",
+  "type": "module",
+  "main": "src/index.js",
+  "scripts": {
+    "dev": "node src/index.js",
+    "start": "node src/index.js",
+    "start:logged": "node src/index.js >> ../.logs/providers-service.log 2>&1",
+    "prisma:gen": "prisma generate",
+    "prisma:migrate": "prisma migrate dev",
+    "prisma:deploy": "prisma migrate deploy"
+  },
+  "prisma": {
+    "seed": "node prisma/seed.js"
+  },
+  "dependencies": {
+    "@fastify/cors": "^11.1.0",
+    "@fastify/helmet": "^13.0.2",
+    "@fastify/jwt": "^10.0.0",
+    "@prisma/client": "^5.22.0",
+    "dotenv": "^17.2.3",
+    "fastify": "^5.6.2",
+    "fastify-plugin": "^5.1.0",
+    "nats": "^2.27.0",
+    "pino": "^9.14.0",
+    "pino-pretty": "^13.1.2"
+  },
+  "devDependencies": {
+    "prisma": "^5.22.0"
+  }
+}

@@ -1,0 +1,269 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+enum EventStatus {
+  DRAFT
+  PLANNING
+  ACTIVE
+  COMPLETED
+  CANCELED
+}
+
+enum ParticipantRole {
+  CLIENT
+  PROVIDER
+  ADMIN
+}
+
+enum ParticipantStatus {
+  INVITED
+  ACCEPTED
+  DECLINED
+}
+
+enum TaskStatus {
+  TODO
+  IN_PROGRESS
+  DONE
+}
+
+model Event {
+  id          String           @id @default(cuid())
+  clientId    String
+  name        String
+  type        String
+  date        DateTime?
+  location    String?
+  currency    String           @default("RON")
+  notes       String?          @db.Text
+  status      EventStatus      @default(DRAFT)
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  tasks        EventTask[]
+  messages     EventMessage[]
+  attachments  EventAttachment[]
+  participants EventParticipant[]
+  offers       EventOffer[]
+}
+
+model EventTask {
+  id         String     @id @default(cuid())
+  eventId    String
+  title      String
+  dueDate    DateTime?
+  status     TaskStatus @default(TODO)
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+
+  event      Event      @relation(fields: [eventId], references: [id])
+
+  @@index([eventId])
+}
+model EventInvitation {
+  id         String              @id @default(cuid())
+  eventId    String
+  clientId   String              // cine invită (owner eveniment)
+  providerId String              // userId provider invitat
+  status     InvitationStatus    @default(PENDING)
+  note       String?             @db.Text
+  createdAt  DateTime            @default(now())
+  decidedAt  DateTime?
+
+  @@index([eventId])
+  @@index([providerId])
+}
+
+model EventMessage {
+  id        String   @id @default(cuid())
+  eventId   String
+  authorId  String
+  body      String   @db.Text
+  createdAt DateTime @default(now())
+
+  event     Event    @relation(fields: [eventId], references: [id])
+
+  @@index([eventId])
+  @@index([authorId])
+}
+
+model EventAttachment {
+  id         String   @id @default(cuid())
+  eventId    String
+  uploaderId String
+  name       String
+  url        String
+  mime       String?
+  size       Int?
+  createdAt  DateTime @default(now())
+
+  event      Event    @relation(fields: [eventId], references: [id])
+
+  @@index([eventId])
+  @@index([uploaderId])
+}
+
+model EventParticipant {
+  eventId  String
+  userId   String
+  role     ParticipantRole
+  status   ParticipantStatus @default(ACCEPTED)
+
+  event    Event @relation(fields: [eventId], references: [id])
+
+  @@id([eventId, userId, role])
+  @@index([userId, role])
+}
+
+model EventTypeTemplate {
+  id          String   @id @default(cuid())
+  type        String
+  name        String
+  description String?
+  taskJson    Json
+  createdAt   DateTime @default(now())
+
+  @@unique([type, name], name: "type_name")
+}
+
+enum OfferStatus {
+  DRAFT
+  SENT
+  ACCEPTED
+  DECLINED
+  CANCELLED
+}
+model EventOffer {
+  id          String      @id @default(cuid())
+  eventId     String
+  providerId  String
+  groupId     String?
+  startsAt    DateTime?
+  endsAt      DateTime?
+  totalCost   Decimal?    @db.Decimal(12,2)
+  currency    String?     @default("RON")
+  status      OfferStatus @default(DRAFT)
+  notes       String?
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  event       Event       @relation(fields: [eventId], references: [id])
+
+  @@index([eventId])
+  @@index([providerId])
+}
+
+model ServiceGroup {
+  id          String        @id @default(cuid())
+  ownerId     String
+  name        String
+  description String?       @db.Text
+  price       Decimal?      @db.Decimal(12,2)
+  currency    String?       @default("RON")
+  status      GroupStatus   @default(ACTIVE)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  members     GroupMember[]
+}
+
+model GroupMember {
+  id        String       @id @default(cuid())
+  groupId   String
+  userId    String       // provider userId
+  role      String?
+  note      String?
+  createdAt DateTime     @default(now())
+
+  group     ServiceGroup @relation(fields: [groupId], references: [id])
+
+  @@index([groupId])
+  @@index([userId])
+}
+
+enum GroupStatus {
+  ACTIVE
+  INACTIVE
+}
+
+model ProviderProfile {
+  id          String   @id @default(cuid())
+  userId      String   @unique
+  displayName String
+  description String?  @db.Text
+  phone       String?
+  location    String?
+  status      ProviderStatus @default(ACTIVE)
+  mediaUrl    String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+enum ProviderStatus {
+  ACTIVE
+  INACTIVE
+}
+
+model ProviderApplication {
+  id         String          @id @default(cuid())
+  userId     String          @unique
+  note       String?         @db.Text
+  status     ProviderAppStatus @default(PENDING)
+  createdAt  DateTime        @default(now())
+  decidedAt  DateTime?
+  decidedBy  String?
+  decisionReasonCode String?  // ex: "PROFILE_INCOMPLETE", "CATEGORY_MISMATCH", "OTHER"
+  decisionReasonText String?  // text liber completat de admin
+}
+
+enum ProviderAppStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+
+
+enum InvitationStatus {
+  PENDING
+  ACCEPTED
+  DECLINED
+  EXPIRED
+}
+
+model Offer {
+  id             String        @id @default(cuid())
+  eventId        String
+  providerId     String
+  serviceGroupId String?
+  title          String
+  description    String?       @db.Text
+  price          Decimal?      @db.Decimal(12,2)
+  currency       String        @default("RON")
+  status         OfferStatus   @default(DRAFT)
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  @@index([eventId])
+  @@index([providerId])
+}
+
+
+
+model EventProgram {
+  id        String   @id @default(cuid())
+  eventId   String
+  startsAt  DateTime
+  endsAt    DateTime?
+  title     String
+  note      String?  @db.Text
+  createdAt DateTime @default(now())
+
+  @@index([eventId])
+}

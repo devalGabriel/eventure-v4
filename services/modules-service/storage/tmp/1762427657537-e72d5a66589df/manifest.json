@@ -1,0 +1,80 @@
+{
+  "slug": "events-client",
+  "name": "Events (Client)",
+  "version": "1.1.0",
+  "description": "Client-side events manager with configurable API endpoints, defaults, filters and localization.",
+  "author": "Eventure",
+  "ui": {
+    "clientSidebarRoute": "/client/events",
+    "clientSidebarLabel": "Evenimente",
+    "clientHostPath": "/client/modules/host/events-client",
+    "settingsHostPath": "/admin/modules/host/events-client/settings"
+  },
+  "permissions": [
+    "auth:required",
+    "role:client|admin"
+  ],
+  "assets": {
+    "client": "client.js"
+  },
+  "config": {
+    "schema": {
+      "apiBase": { "type": "string", "default": "http://localhost:4003", "label": "Events API Base" },
+      "providersApiBase": { "type": "string", "default": "", "label": "Providers API Base (optional)" },
+      "auth": {
+        "type": "object",
+        "label": "Auth",
+        "properties": {
+          "strategy": { "type": "string", "enum": ["cookies","bearer"], "default": "cookies", "label": "Auth strategy" },
+          "bearerVar": { "type": "string", "default": "window.__AUTH_TOKEN__", "label": "Global Bearer JS var (if strategy=bearer)" }
+        }
+      },
+      "defaults": {
+        "type": "object",
+        "label": "Default Values",
+        "properties": {
+          "currency": { "type": "string", "default": "RON" },
+          "location": { "type": "string", "default": "" },
+          "eventType": { "type": "string", "default": "wedding" },
+          "timezone": { "type": "string", "default": "Europe/Bucharest" },
+          "dateFormat": { "type": "string", "default": "yyyy-MM-dd HH:mm" }
+        }
+      },
+      "filters": {
+        "type": "object",
+        "label": "Default Filters",
+        "properties": {
+          "status": { "type": "string", "enum": ["","DRAFT","PLANNING","ACTIVE","COMPLETED","CANCELED"], "default": "" },
+          "pageSize": { "type": "number", "default": 20 }
+        }
+      },
+      "ui": {
+        "type": "object",
+        "label": "UI",
+        "properties": {
+          "hideSections": {
+            "type": "array",
+            "items": { "type": "string", "enum": ["tasks","invitations","messages","attachments"] },
+            "default": []
+          },
+          "optimisticUpdates": { "type": "boolean", "default": true },
+          "notifications": { "type": "boolean", "default": false },
+          "locale": { "type": "string", "default": "ro" }
+        }
+      },
+      "integrations": {
+        "type": "object",
+        "label": "Integrations",
+        "properties": {
+          "enableProviderLookup": { "type": "boolean", "default": false },
+          "providerSearchMinChars": { "type": "number", "default": 3 },
+          "providerSearchDebounceMs": { "type": "number", "default": 350 }
+        }
+      }
+    }
+  },
+  "compat": {
+    "minHostVersion": "1.0.0",
+    "csp": { "requires": ["fetch-self", "inline-style"] }
+  }
+}
