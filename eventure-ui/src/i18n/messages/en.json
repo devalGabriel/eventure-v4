@@ -1,0 +1,30 @@
+{
+  "app":{
+    "title": "Eventure v4"
+  },
+  "nav": {
+    "home": "Home",
+    "dashboard": "Dashboard",
+    "profile": "Profile",
+    "login": "Login",
+    "register": "Register",
+    "logout": "Logout"
+  },
+  "landing": {
+    "hero": {
+      "title": "Plan events. Faster.",
+      "subtitle": "Modern microservices. Secure. Scalable."
+    }
+  },
+  "auth": {
+    "email": "Email",
+    "password": "Password",
+    "forgot": "Forgot password?",
+    "signin": "Sign in",
+    "signup": "Create account",
+    "name": "Full name"
+  },
+  "dashboard": {
+    "title": "Dashboard"
+  }
+}

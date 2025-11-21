@@ -1,0 +1,14 @@
+/* src/styles/design.scss */
+.section-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 16px;
+
+  @media (min-width: 768px) {
+    grid-template-columns: repeat(12, 1fr);
+  }
+}
+
+.card-span-4 { grid-column: span 12; @media (min-width:768px){ grid-column: span 4; } }
+.card-span-6 { grid-column: span 12; @media (min-width:768px){ grid-column: span 6; } }
+.card-span-12 { grid-column: span 12; }

@@ -1,0 +1,9 @@
+:root {
+  --evt-border: rgba(0,0,0,.08);
+}
+
+.evt-card {
+  border: 1px solid var(--evt-border);
+  border-radius: 12px;
+  background: var(--mui-palette-background-paper, #fff);
+}

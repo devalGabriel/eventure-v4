@@ -1,0 +1,32 @@
+.landing-hero {
+  text-align: center;
+  padding: 6rem 0 4rem;
+  h1 { margin: 0 0 .75rem; }
+  p { color: #64748b; max-width: 680px; margin: 0 auto 1.5rem; }
+}
+
+.landing-steps {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: 1fr;
+  @media (min-width: 900px) { grid-template-columns: repeat(3, 1fr); }
+}
+
+.landing-step {
+  padding: 24px;
+  border: 1px solid rgba(0,0,0,.06);
+  border-radius: 12px;
+  background: var(--paper, #fff);
+}
+
+.testimonials {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: 1fr;
+  @media (min-width: 900px) { grid-template-columns: repeat(3, 1fr); }
+}
+.quote {
+  padding: 20px;
+  border-radius: 12px;
+  background: rgba(99,102,241,.06);
+}

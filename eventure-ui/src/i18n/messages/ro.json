@@ -1,0 +1,31 @@
+{
+  "app":{
+
+    "title": "Eventure v4"
+  },
+  "nav": {
+    "home": "Acasă",
+    "dashboard": "Dashboard",
+    "profile": "Profil",
+    "login": "Autentificare",
+    "register": "Înregistrare",
+    "logout": "Ieșire"
+  },
+  "landing": {
+    "hero": {
+      "title": "Organizează evenimente. Mai rapid.",
+      "subtitle": "Microservicii moderne. Securizat. Scalabil."
+    }
+  },
+  "auth": {
+    "email": "Email",
+    "password": "Parolă",
+    "forgot": "Ai uitat parola?",
+    "signin": "Intră",
+    "signup": "Creează cont",
+    "name": "Nume complet"
+  },
+  "dashboard": {
+    "title": "Panou"
+  }
+}

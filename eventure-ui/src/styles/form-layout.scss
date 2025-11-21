@@ -1,0 +1,22 @@
+.form-page {
+  display: block;
+}
+
+.form-grid {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: 1fr;
+  @media (min-width: 900px) {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.col-6 { grid-column: span 12; @media (min-width:900px){ grid-column: span 6; } }
+.col-12 { grid-column: span 12; }
+
+.form-section {
+  padding: 24px;
+  background: var(--paper, #fff);
+  border: 1px solid rgba(0,0,0,.06);
+  border-radius: 12px;
+}
