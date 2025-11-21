@@ -2,42 +2,44 @@
 const fp = require('fastify-plugin');
 const jwt = require('jsonwebtoken');
 
-async function authenticatePlugin(fastify) {
+async function authPlugin(fastify) {
   fastify.decorate('authenticate', async function (request, reply) {
     const auth =
       request.headers['authorization'] ||
       request.headers['Authorization'];
 
     if (!auth || !auth.startsWith('Bearer ')) {
-      return reply.code(401).send({ message: 'Missing token' });
+      return reply.code(401).send({ message: 'Missing Bearer token' });
     }
 
-    const token = auth.slice('Bearer '.length);
+    const token = auth.slice(7).trim();
 
     try {
-      const decoded = jwt.verify(
+      const payload = jwt.verify(
         token,
         process.env.JWT_SECRET ||
           process.env.ACCESS_TOKEN_SECRET ||
-          'supersecret-dev'
+          'dev-secret'
       );
 
-      // tokenul emis de auth-service are: { id, role, email, ... }
-      const rolesFromToken = decoded.roles || (
-        decoded.role ? [String(decoded.role).toUpperCase()] : []
-      );
+      const role = payload.role || null;
 
       request.user = {
-        id: decoded.sub || decoded.id || decoded.userId || null,
-        email: decoded.email || null,
-        role: decoded.role || null,
-        roles: rolesFromToken,
+        id: payload.id || payload.sub || payload.userId || null,
+        email: payload.email || null,
+        role, // "admin" / "client" / "provider"
+        roles: Array.isArray(payload.roles)
+          ? payload.roles
+          : role
+          ? [String(role).toUpperCase()]
+          : [],
+        raw: payload,
       };
     } catch (err) {
-      request.log.error({ err }, 'JWT verify failed');
+      request.log.warn({ err }, 'JWT verification failed');
       return reply.code(401).send({ message: 'Invalid token' });
     }
   });
 }
 
-module.exports = fp(authenticatePlugin);
+module.exports = fp(authPlugin);

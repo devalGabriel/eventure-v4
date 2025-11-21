@@ -21,12 +21,8 @@ import {
   IconButton,
 } from "@mui/material";
 import RefreshIcon from "@mui/icons-material/Refresh";
-import Link from "next/link";
-import { usePathname } from "next/navigation";
-import {
-  adminListUsers,
-  adminUpdateUserRoles,
-} from "@/lib/api/usersClient";
+import { usePathname, useRouter } from "next/navigation";
+import { adminListUsers, adminUpdateUser } from "@/lib/api/usersClient";
 import { extractLocaleAndPath } from "@/lib/extractLocaleAndPath";
 
 const roleOptions = ["ADMIN", "CLIENT", "PROVIDER"];
@@ -37,23 +33,18 @@ const roleColorMap = {
   PROVIDER: "primary",
 };
 
-function getPrimaryRole(u) {
-  const roles = Array.isArray(u.roles) ? u.roles : [];
-  if (!roles.length) return null;
-  if (roles.includes("ADMIN")) return "ADMIN";
-  if (roles.includes("PROVIDER")) return "PROVIDER";
-  if (roles.includes("CLIENT")) return "CLIENT";
-  return roles[0];
-}
-
 export default function AdminUsersList() {
-  const [filters, setFilters] = useState({ role: "", q: "" });
+  const [filters, setFilters] = useState({
+    role: "",
+    q: "",
+  });
   const [loading, setLoading] = useState(true);
   const [rows, setRows] = useState([]);
   const [error, setError] = useState(null);
   const [rowUpdatingId, setRowUpdatingId] = useState(null);
 
   const pathname = usePathname();
+  const router = useRouter();
   const { locale } = useMemo(
     () => extractLocaleAndPath(pathname),
     [pathname]
@@ -97,42 +88,27 @@ export default function AdminUsersList() {
   const countsByRole = useMemo(() => {
     const acc = { ADMIN: 0, CLIENT: 0, PROVIDER: 0 };
     for (const u of rows) {
-      const r = getPrimaryRole(u);
-      if (r && Object.prototype.hasOwnProperty.call(acc, r)) {
-        acc[r] += 1;
-      }
+      (u.roles || []).forEach((r) => {
+        const key = String(r).toUpperCase();
+        if (Object.prototype.hasOwnProperty.call(acc, key)) {
+          acc[key] += 1;
+        }
+      });
     }
     return acc;
   }, [rows]);
 
-  const quickChangeRole = async (e, userId, targetRole) => {
+  const toggleActive = async (e, userId, nextActive) => {
     e.stopPropagation();
-
-    let payload;
-    if (targetRole === "ADMIN") {
-      payload = { add: ["ADMIN"], remove: [] };
-    } else if (targetRole === "PROVIDER") {
-      // provider rămâne și client by default
-      payload = { add: ["PROVIDER", "CLIENT"], remove: ["ADMIN"] };
-    } else if (targetRole === "CLIENT") {
-      payload = { add: ["CLIENT"], remove: ["ADMIN", "PROVIDER"] };
-    } else {
-      return;
-    }
-
     try {
       setRowUpdatingId(userId);
-      const updated = await adminUpdateUserRoles(userId, payload);
+      const updated = await adminUpdateUser(userId, { isActive: nextActive });
       setRows((prev) =>
-        prev.map((u) =>
-          u.id === userId ? { ...u, roles: updated.roles || u.roles } : u
-        )
+        prev.map((u) => (u.id === userId ? { ...u, isActive: updated.isActive } : u))
       );
     } catch (err) {
       console.error(err);
-      alert(
-        "Nu s-a putut actualiza rolul: " + (err.message || String(err))
-      );
+      alert("Nu s-a putut actualiza statusul: " + (err.message || String(err)));
     } finally {
       setRowUpdatingId(null);
     }
@@ -175,7 +151,7 @@ export default function AdminUsersList() {
         <Grid item xs={12} md={4}>
           <TextField
             select
-            label="Rol principal"
+            label="Rol"
             fullWidth
             margin="normal"
             value={filters.role}
@@ -184,7 +160,7 @@ export default function AdminUsersList() {
             <MenuItem value="">(toate)</MenuItem>
             {roleOptions.map((r) => (
               <MenuItem key={r} value={r}>
-                {r}
+                {r.toLowerCase()}
               </MenuItem>
             ))}
           </TextField>
@@ -213,7 +189,7 @@ export default function AdminUsersList() {
           return (
             <Chip
               key={r}
-              label={`${r} (${countsByRole[r] || 0})`}
+              label={`${r.toLowerCase()} (${countsByRole[r] || 0})`}
               size="small"
               variant={selected ? "filled" : "outlined"}
               color={roleColorMap[r] || "default"}
@@ -222,7 +198,7 @@ export default function AdminUsersList() {
                 setFilters((prev) => ({ ...prev, role: newRole }));
                 load({ role: newRole });
               }}
-              sx={{ mb: 1 }}
+              sx={{ mb: 1, textTransform: "capitalize" }}
             />
           );
         })}
@@ -240,9 +216,9 @@ export default function AdminUsersList() {
       <Table size="small">
         <TableHead>
           <TableRow>
-            <TableCell>Nume</TableCell>
-            <TableCell>Email</TableCell>
+            <TableCell>Utilizator</TableCell>
             <TableCell>Roluri</TableCell>
+            <TableCell>Status</TableCell>
             <TableCell>Creat la</TableCell>
             <TableCell>Acțiuni rapide</TableCell>
           </TableRow>
@@ -250,44 +226,60 @@ export default function AdminUsersList() {
         <TableBody>
           {rows.map((u) => {
             const updating = rowUpdatingId === u.id;
-            const primaryRole = getPrimaryRole(u);
+            const active = u.isActive ?? true;
+
             return (
-              <TableRow key={u.id} hover sx={{ cursor: "default" }}>
+              <TableRow
+                key={u.id}
+                hover
+                sx={{ cursor: "pointer" }}
+                onClick={() =>
+                  router.push(`/${locale}/admin/users/${u.id}`)
+                }
+              >
                 <TableCell>
-                  <Link
-                    href={`/${locale}/admin/users/${u.id}`}
-                    style={{
-                      textDecoration: "none",
-                      color: "inherit",
-                    }}
-                  >
-                    <Box
-                      component="span"
-                      sx={{
-                        color: "primary.main",
-                        "&:hover": { textDecoration: "underline" },
-                      }}
-                    >
+                  <Stack spacing={0.3}>
+                    <Typography variant="subtitle2">
                       {u.fullName || "—"}
-                    </Box>
-                  </Link>
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      {u.email}
+                    </Typography>
+                    <Typography variant="caption" color="text.disabled">
+                      ID: {u.id}
+                    </Typography>
+                  </Stack>
                 </TableCell>
-                <TableCell>{u.email}</TableCell>
                 <TableCell>
-                  {Array.isArray(u.roles) && u.roles.length ? (
-                    <Stack direction="row" spacing={0.5} flexWrap="wrap">
-                      {u.roles.map((r) => (
+                  <Stack
+                    direction="row"
+                    spacing={0.5}
+                    flexWrap="wrap"
+                  >
+                    {u.roles?.length
+                      ? u.roles.map((r) => (
+                          <Chip
+                            key={r}
+                            size="small"
+                            label={r}
+                            color={roleColorMap[r] || "default"}
+                          />
+                        ))
+                      : (
                         <Chip
-                          key={r}
                           size="small"
-                          label={r}
-                          color={roleColorMap[r] || "default"}
+                          label="fără rol"
+                          variant="outlined"
                         />
-                      ))}
-                    </Stack>
-                  ) : (
-                    <Chip size="small" label="Fără rol" variant="outlined" />
-                  )}
+                        )}
+                  </Stack>
+                </TableCell>
+                <TableCell>
+                  <Chip
+                    size="small"
+                    label={active ? "Activ" : "Inactiv"}
+                    color={active ? "success" : "default"}
+                  />
                 </TableCell>
                 <TableCell>
                   {u.createdAt
@@ -296,19 +288,25 @@ export default function AdminUsersList() {
                 </TableCell>
                 <TableCell>
                   <Stack direction="row" spacing={0.5} flexWrap="wrap">
-                    {roleOptions
-                      .filter((r) => r !== primaryRole)
-                      .map((r) => (
-                        <Button
-                          key={r}
-                          size="small"
-                          variant="outlined"
-                          disabled={updating}
-                          onClick={(e) => quickChangeRole(e, u.id, r)}
-                        >
-                          Set {r.toLowerCase()}
-                        </Button>
-                      ))}
+                    <Button
+                      size="small"
+                      variant="outlined"
+                      color={active ? "warning" : "success"}
+                      disabled={updating}
+                      onClick={(e) => toggleActive(e, u.id, !active)}
+                    >
+                      {active ? "Dezactivează" : "Activează"}
+                    </Button>
+                    <Button
+                      size="small"
+                      variant="text"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        router.push(`/${locale}/admin/users/${u.id}`);
+                      }}
+                    >
+                      Detalii
+                    </Button>
                   </Stack>
                 </TableCell>
               </TableRow>

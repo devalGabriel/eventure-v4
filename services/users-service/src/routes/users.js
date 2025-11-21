@@ -5,23 +5,16 @@ const { OUT } = require('../lib/events');
 const { mapUser, mapUsers } = require('../lib/dto');
 const { diffKeys } = require('../lib/diff');
 
-// verifică dacă request.user e admin (din JWT) sau avem header de dev
 async function requireAdmin(request, reply) {
-  const roleFromUser = request.user?.role;
-  const rolesArr = request.user?.roles || [];
-  const roleHeader = request.headers['x-user-role'];
+  const user = request.user || {};
+  const role = (user.role || '').toLowerCase();
+  const roles = Array.isArray(user.roles)
+    ? user.roles.map((r) => String(r).toUpperCase())
+    : [];
 
-  const isAdminToken =
-    roleFromUser && String(roleFromUser).toLowerCase() === 'admin';
+  const isAdmin = role === 'admin' || roles.includes('ADMIN');
 
-  const isAdminArray = rolesArr
-    .map((r) => String(r).toUpperCase())
-    .includes('ADMIN');
-
-  const isAdminHeader =
-    roleHeader && String(roleHeader).toUpperCase() === 'ADMIN';
-
-  if (!(isAdminToken || isAdminArray || isAdminHeader)) {
+  if (!isAdmin) {
     return reply.code(403).send({ message: 'Admin only' });
   }
 }
@@ -29,7 +22,7 @@ async function requireAdmin(request, reply) {
 async function routes(fastify) {
   const { prisma } = fastify;
 
-  // GET /users/:id – după authUserId (id-ul din auth-service)
+  // --------- GET /users/:id (by authUserId) – folosit intern ----------
   fastify.get('/users/:id', async (req, reply) => {
     const { id } = req.params;
     try {
@@ -40,12 +33,12 @@ async function routes(fastify) {
       if (!user) return reply.notFound('User not found');
       return mapUser(user);
     } catch (error) {
-      req.log.error({ error }, 'error on GET /users/:id');
-      return reply.internalServerError('Internal error');
+      req.log.error({ error }, 'GET /users/:id failed');
+      return reply.internalServerError();
     }
   });
 
-  // GET /v1/users/:id – după UUID profil
+  // --------- GET /v1/users/:id (profil by UUID) ----------
   fastify.get('/v1/users/:id', async (req, reply) => {
     const { id } = userIdParam.parse(req.params);
     const user = await prisma.userProfile.findUnique({
@@ -56,7 +49,7 @@ async function routes(fastify) {
     return mapUser(user);
   });
 
-  // GET /v1/users – listă generică (filtrare)
+  // --------- LIST /v1/users (generic, pentru UI user/profile) ----------
   fastify.get('/v1/users', async (req) => {
     const { query, role, active, page = '1', pageSize = '20' } = req.query;
 
@@ -98,7 +91,7 @@ async function routes(fastify) {
     };
   });
 
-  // PATCH /v1/users/:id – update profil + AUDIT + OUTBOX (profile.updated)
+  // --------- PATCH /v1/users/:id (profil user) ----------
   fastify.patch('/v1/users/:id', async (req, reply) => {
     const { id } = userIdParam.parse(req.params);
     const body = updateProfileBody.parse(req.body);
@@ -115,8 +108,13 @@ async function routes(fastify) {
       include: { roles: true },
     });
 
-    const allowedKeys = ['fullName', "email",'phone', 'locale', 'avatarUrl', 'isActive'];
-    const changed = diffKeys(existing, updated, allowedKeys);
+    const changed = diffKeys(existing, updated, [
+      'fullName',
+      'phone',
+      'locale',
+      'avatarUrl',
+      'isActive',
+    ]);
 
     await prisma.userProfileAudit.create({
       data: {
@@ -139,23 +137,18 @@ async function routes(fastify) {
       },
     });
 
-    // Eveniment pentru auth-service & alții
+    // outbox – deocamdată trimitem doar info generică; consumatorul din auth poate decide ce folosește
     await enqueueOutbox(prisma, OUT.USERS_PROFILE_UPDATED, {
-      authUserId: existing.authUserId,      // id din AUTH service
-      profileId: id,                        // UUID-ul profilului
+      userId: existing.authUserId, // id-ul din AUTH service
+      profileId: id,
       changed,
-      email: updated.email,
-      fullName: updated.fullName,
-      locale: updated.locale,
-      phone: updated.phone,
-      isActive: updated.isActive,
       at: new Date().toISOString(),
     });
 
     return mapUser(updated);
   });
 
-  // DELETE (soft) + AUDIT + OUTBOX
+  // --------- DELETE (soft) /v1/users/:id ----------
   fastify.delete('/v1/users/:id', async (req) => {
     const { id } = userIdParam.parse(req.params);
     const before = await prisma.userProfile.findUnique({ where: { id } });
@@ -174,21 +167,20 @@ async function routes(fastify) {
           isActive: before?.isActive ?? true,
           deletedAt: before?.deletedAt ?? null,
         },
-        after: {
-          isActive: false,
-          deletedAt: new Date().toISOString(),
-        },
+        after: { isActive: false, deletedAt: new Date().toISOString() },
       },
     });
 
     await enqueueOutbox(prisma, OUT.USERS_DELETED, {
-      userId: id,
+      userId: before?.authUserId || null,
+      profileId: id,
       at: new Date().toISOString(),
     });
+
     return { ok: true };
   });
 
-  // BULK FETCH: POST /v1/users/bulk { ids?: string[], emails?: string[] }
+  // --------- BULK /v1/users/bulk ----------
   fastify.post('/v1/users/bulk', async (req, reply) => {
     const { ids = [], emails = [] } = req.body || {};
     if ((!ids || !ids.length) && (!emails || !emails.length)) {
@@ -207,7 +199,7 @@ async function routes(fastify) {
     return { count: items.length, items: mapUsers(items) };
   });
 
-  // --- ADMIN: list users (panel admin) ---
+  // --------- ADMIN LIST: GET /v1/admin/users ----------
   fastify.get(
     '/v1/admin/users',
     {
@@ -225,7 +217,7 @@ async function routes(fastify) {
           ? {
               roles: {
                 some: {
-                  name: role,
+                  name: role, // 'ADMIN' | 'CLIENT' | 'PROVIDER'
                 },
               },
             }
@@ -261,14 +253,31 @@ async function routes(fastify) {
     }
   );
 
-  // --- ADMIN: update rapid (deocamdată nu îl folosim, lăsat pentru viitor) ---
+  // --------- ADMIN DETAILS: GET /v1/admin/users/:id ----------
+  fastify.get(
+    '/v1/admin/users/:id',
+    {
+      preHandler: [fastify.authenticate, requireAdmin],
+    },
+    async (request, reply) => {
+      const { id } = request.params;
+      const user = await prisma.userProfile.findUnique({
+        where: { id: String(id) },
+        include: { roles: true },
+      });
+      if (!user) return reply.notFound('User not found');
+      return mapUser(user);
+    }
+  );
+
+  // --------- ADMIN UPDATE: PATCH /v1/admin/users/:id ----------
   fastify.patch(
     '/v1/admin/users/:id',
     {
       preHandler: [fastify.authenticate, requireAdmin],
     },
     async (request, reply) => {
-      const { id } = userIdParam.parse(request.params);
+      const { id } = request.params;
       const { isActive } = request.body || {};
       const data = {};
 
@@ -281,30 +290,22 @@ async function routes(fastify) {
       }
 
       const updated = await prisma.userProfile.update({
-        where: { id },
+        where: { id: String(id) },
         data,
         include: { roles: true },
+      });
+
+      // opțional: outbox pentru schimbare status (force logout, etc.)
+      await enqueueOutbox(prisma, OUT.USERS_PROFILE_UPDATED, {
+        userId: updated.authUserId,
+        profileId: updated.id,
+        changed: ['isActive'],
+        at: new Date().toISOString(),
       });
 
       return mapUser(updated);
     }
   );
-
-    // --- ADMIN: audit trail pentru un user ---
-  fastify.get('/v1/admin/users/:id/audit', {
-    preHandler: [fastify.authenticate, requireAdmin]
-  }, async (request) => {
-    const { id } = userIdParam.parse(request.params);
-
-    const items = await prisma.userProfileAudit.findMany({
-      where: { userId: id },
-      orderBy: { at: 'desc' },
-      take: 100
-    });
-
-    return { items };
-  });
-
 }
 
 module.exports = routes;
