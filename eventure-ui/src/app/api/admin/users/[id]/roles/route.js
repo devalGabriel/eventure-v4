@@ -3,9 +3,9 @@ import { NextResponse } from 'next/server';
 import { usersFetch, forwardUsersResponse } from '@/lib/server/usersProxy';
 
 export async function PATCH(req, { params }) {
-    const p = await params
+  const p = await params;
   const { id } = p;
-  const body = await req.text();
+  const body = await req.json();
 
   const upstream = await usersFetch(`/users/${id}/roles`, {
     method: 'PATCH',
@@ -13,7 +13,7 @@ export async function PATCH(req, { params }) {
       'Content-Type': 'application/json',
       'x-user-role': 'ADMIN',
     },
-    body,
+    body: JSON.stringify(body),
   });
 
   const forwarded = await forwardUsersResponse(upstream);

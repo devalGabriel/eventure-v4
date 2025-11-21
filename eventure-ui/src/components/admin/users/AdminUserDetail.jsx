@@ -1,36 +1,47 @@
+// src/components/admin/users/AdminUserDetail.jsx
 "use client";
 
 import { useEffect, useState, useMemo } from "react";
 import {
   Box,
   Paper,
-  Stack,
   Typography,
   TextField,
-  Switch,
-  FormControlLabel,
-  Button,
+  Stack,
   Chip,
   Tabs,
   Tab,
-  LinearProgress,
+  Button,
+  Switch,
+  FormControlLabel,
   Divider,
+  LinearProgress,
+  Table,
+  TableHead,
+  TableRow,
+  TableCell,
+  TableBody,
+  MenuItem,
 } from "@mui/material";
-import dayjs from "dayjs";
+import { usePathname } from "next/navigation";
+import { extractLocaleAndPath } from "@/lib/extractLocaleAndPath";
 import {
   adminGetUser,
-  adminUpdateUser,
   adminGetUserAudit,
-  adminForceLogoutUser,
+  adminUpdateUser,
+  adminUpdateUserRoles,
 } from "@/lib/api/usersClient";
 
-export default function AdminUserDetail({ userId }) {
-  const [tab, setTab] = useState("profile");
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [user, setUser] = useState(null);
-  const [error, setError] = useState(null);
+const roleOptions = ["admin", "client", "provider"];
 
+export default function AdminUserDetail({ userId }) {
+  const pathname = usePathname();
+  const { locale } = useMemo(
+    () => extractLocaleAndPath(pathname),
+    [pathname]
+  );
+
+  const [user, setUser] = useState(null);
   const [form, setForm] = useState({
     fullName: "",
     email: "",
@@ -38,78 +49,41 @@ export default function AdminUserDetail({ userId }) {
     locale: "",
     isActive: true,
   });
+  const [roleValue, setRoleValue] = useState("");
+  const [tab, setTab] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState(null);
 
-  // AUDIT
   const [auditLoading, setAuditLoading] = useState(false);
-  const [auditLoaded, setAuditLoaded] = useState(false);
-  const [auditItems, setAuditItems] = useState([]);
-  const [auditError, setAuditError] = useState(null);
-
-  const roleChips = useMemo(
-    () =>
-      (user?.roles || []).map((r) => ({
-        label: r,
-        color:
-          r === "ADMIN"
-            ? "secondary"
-            : r === "PROVIDER"
-            ? "primary"
-            : "default",
-      })),
-    [user]
-  );
+  const [audit, setAudit] = useState({ items: [], total: 0 });
 
   const loadUser = async () => {
     setLoading(true);
     setError(null);
     try {
-      const data = await adminGetUser(userId);
-      setUser(data);
-
+      const u = await adminGetUser(userId);
+      setUser(u);
       setForm({
-        fullName: data.fullName || data.name || "",
-        email: data.email || "",
-        phone: data.phone || "",
-        locale: data.locale || "ro-RO",
-        isActive: typeof data.isActive === "boolean" ? data.isActive : true,
+        fullName: u.fullName || "",
+        email: u.email || "",
+        phone: u.phone || "",
+        locale: u.locale || "ro-RO",
+        isActive: u.isActive ?? true,
       });
+      setRoleValue(u.role || "");
     } catch (err) {
       console.error(err);
-      setError(err.message || "Eroare la încărcarea utilizatorului");
+      setError(err.message || "Nu s-a putut încărca utilizatorul");
     } finally {
       setLoading(false);
     }
   };
 
-  const loadAudit = async () => {
-    if (auditLoaded) return; // nu reîncărcăm inutil
-    setAuditLoading(true);
-    setAuditError(null);
-    try {
-      const res = await adminGetUserAudit(userId);
-      setAuditItems(res.items || []);
-      setAuditLoaded(true);
-    } catch (err) {
-      console.error(err);
-      setAuditError(err.message || "Eroare la încărcarea istoricului");
-    } finally {
-      setAuditLoading(false);
-    }
-  };
-
   useEffect(() => {
-    if (userId) {
-      loadUser();
-    }
+    loadUser();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId]);
-
-  // când schimbăm tab-ul pe "audit", încărcăm istoricul
-  const handleTabChange = (e, newVal) => {
-    setTab(newVal);
-    if (newVal === "audit") {
-      loadAudit();
-    }
-  };
 
   const handleFormChange = (field) => (e) => {
     const value =
@@ -118,95 +92,142 @@ export default function AdminUserDetail({ userId }) {
   };
 
   const handleSave = async () => {
+    if (!user) return;
     setSaving(true);
     setError(null);
-    try {
-      const payload = {
-        fullName: form.fullName || undefined,
-        email: form.email || undefined,
-        phone: form.phone || undefined,
-        locale: form.locale || undefined,
-        isActive: form.isActive,
-      };
 
-      const updated = await adminUpdateUser(userId, payload);
-      setUser(updated);
+    try{
+      const payload = {};
 
-      // eventual reload audit (dacă e deja deschis tab-ul)
-      if (auditLoaded) {
-        setAuditLoaded(false);
-        loadAudit();
+      if (form.fullName !== (user.fullName || "")) {
+        payload.fullName = form.fullName;
       }
+      if (form.email !== (user.email || "")) {
+        payload.email = form.email;
+      }
+      if (form.phone !== (user.phone || "")) {
+        payload.phone = form.phone;
+      }
+      if (form.locale !== (user.locale || "")) {
+        payload.locale = form.locale;
+      }
+      if (typeof form.isActive === "boolean" && form.isActive !== user.isActive) {
+        payload.isActive = form.isActive;
+      }
+
+      let updated = user;
+      if (Object.keys(payload).length > 0) {
+        updated = await adminUpdateUser(user.id, payload);
+      }
+
+      setUser(updated);
+      setForm((prev) => ({
+        ...prev,
+        fullName: updated.fullName || "",
+        email: updated.email || "",
+        phone: updated.phone || "",
+        locale: updated.locale || "ro-RO",
+        isActive: updated.isActive ?? true,
+      }));
     } catch (err) {
       console.error(err);
-      setError(err.message || "Nu s-a putut salva modificările");
+      setError(err.message || "Nu s-au putut salva modificările");
     } finally {
       setSaving(false);
     }
   };
 
-  const handleForceLogout = async () => {
+  const handleRoleChange = async (e) => {
+    const newRole = e.target.value;
+    if (!user) return;
+    setRoleValue(newRole);
     try {
-      await adminForceLogoutUser(userId);
-      alert("Toate sesiunile utilizatorului au fost invalidate (force logout).");
+      const currentRoles = user.roles || [];
+      const target = newRole.toUpperCase();
+      const add = [target];
+      const remove = currentRoles.filter((r) => r !== target);
+
+      const updated = await adminUpdateUserRoles(user.id, { add, remove });
+      setUser(updated);
+      setRoleValue(updated.role || "");
     } catch (err) {
       console.error(err);
-      alert(
-        "Nu s-a putut face force logout: " + (err.message || String(err))
-      );
+      setError(err.message || "Nu s-a putut actualiza rolul");
     }
   };
 
+  const loadAudit = async () => {
+    if (!user) return;
+    setAuditLoading(true);
+    setError(null);
+    try {
+      const res = await adminGetUserAudit(user.id, {
+        page: 1,
+        pageSize: 50,
+      });
+      setAudit({
+        items: res.items || [],
+        total: res.total || 0,
+      });
+    } catch (err) {
+      console.error(err);
+      setError(err.message || "Nu s-a putut încărca auditul");
+    } finally {
+      setAuditLoading(false);
+    }
+  };
+
+  const handleTabChange = (e, value) => {
+    setTab(value);
+    if (value === 1 && audit.items.length === 0) {
+      // tab Audit
+      loadAudit();
+    }
+  };
+
+  if (loading) {
+    return (
+      <Paper sx={{ p: 3 }}>
+        <LinearProgress sx={{ mb: 2 }} />
+        <Typography>Se încarcă utilizatorul...</Typography>
+      </Paper>
+    );
+  }
+
+  if (!user) {
+    return (
+      <Paper sx={{ p: 3 }}>
+        <Typography color="error">
+          Utilizatorul nu a fost găsit.
+        </Typography>
+      </Paper>
+    );
+  }
+
   return (
     <Paper sx={{ p: 3 }}>
-      {/* HEADER */}
-      <Stack
-        direction="row"
-        justifyContent="space-between"
-        alignItems="center"
-        sx={{ mb: 2 }}
-        spacing={2}
-      >
+      <Stack direction="row" justifyContent="space-between" sx={{ mb: 2 }}>
         <Box>
-          <Typography variant="h6" sx={{ mb: 0.5 }}>
-            Detalii utilizator
+          <Typography variant="h6">Detalii utilizator</Typography>
+          <Typography variant="body2" color="text.secondary">
+            ID (profil users-service): {user.id}
           </Typography>
-          {user && (
+          {user.authUserId && (
             <Typography variant="body2" color="text.secondary">
-              {user.email} • ID profil: {user.id}
+              authUserId (auth-service): {user.authUserId}
             </Typography>
           )}
         </Box>
-
         <Stack direction="row" spacing={1} alignItems="center">
-          {(roleChips || []).map((r) => (
-            <Chip
-              key={r.label}
-              size="small"
-              label={r.label}
-              color={r.color}
-            />
-          ))}
           <Button
-            variant="outlined"
-            color="error"
-            onClick={handleForceLogout}
+            variant="contained"
+            onClick={handleSave}
+            disabled={saving}
           >
-            Force logout
+            Salvează
           </Button>
         </Stack>
       </Stack>
-
-      <Tabs
-        value={tab}
-        onChange={handleTabChange}
-        sx={{ mb: 2 }}
-      >
-        <Tab value="profile" label="Profil" />
-        <Tab value="audit" label="Istoric modificări" />
-      </Tabs>
-
-      {loading && <LinearProgress sx={{ mb: 2 }} />}
 
       {error && (
         <Typography color="error" sx={{ mb: 2 }}>
@@ -214,10 +235,20 @@ export default function AdminUserDetail({ userId }) {
         </Typography>
       )}
 
-      {/* TAB PROFIL */}
-      {tab === "profile" && (
+      <Tabs
+        value={tab}
+        onChange={handleTabChange}
+        sx={{ mb: 2 }}
+        aria-label="tabs user admin"
+      >
+        <Tab label="Profil" />
+        <Tab label="Audit" />
+      </Tabs>
+
+      {tab === 0 && (
         <Box>
-          <Stack spacing={2}>
+          {/* PROFIL */}
+          <Stack spacing={2} sx={{ mb: 3 }}>
             <TextField
               label="Nume complet"
               fullWidth
@@ -226,22 +257,25 @@ export default function AdminUserDetail({ userId }) {
             />
             <TextField
               label="Email"
+              type="email"
               fullWidth
               value={form.email}
               onChange={handleFormChange("email")}
             />
-            <TextField
-              label="Telefon"
-              fullWidth
-              value={form.phone}
-              onChange={handleFormChange("phone")}
-            />
-            <TextField
-              label="Locale"
-              fullWidth
-              value={form.locale}
-              onChange={handleFormChange("locale")}
-            />
+            <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
+              <TextField
+                label="Telefon"
+                fullWidth
+                value={form.phone}
+                onChange={handleFormChange("phone")}
+              />
+              <TextField
+                label="Locale"
+                fullWidth
+                value={form.locale}
+                onChange={handleFormChange("locale")}
+              />
+            </Stack>
             <FormControlLabel
               control={
                 <Switch
@@ -251,85 +285,89 @@ export default function AdminUserDetail({ userId }) {
               }
               label="Cont activ"
             />
-
-            <Stack direction="row" spacing={2}>
-              <Button
-                variant="contained"
-                onClick={handleSave}
-                disabled={saving || loading}
-              >
-                Salvează modificările
-              </Button>
-            </Stack>
           </Stack>
+
+          <Divider sx={{ mb: 2 }} />
+
+          {/* ROLURI */}
+          <Typography variant="subtitle1" sx={{ mb: 1 }}>
+            Roluri & permisiuni
+          </Typography>
+
+          <Stack direction="row" spacing={1} sx={{ mb: 2 }} flexWrap="wrap">
+            {(user.roles || []).map((r) => (
+              <Chip key={r} label={r} size="small" />
+            ))}
+            {(!user.roles || user.roles.length === 0) && (
+              <Typography variant="body2" color="text.secondary">
+                Fără roluri definite în users-service.
+              </Typography>
+            )}
+          </Stack>
+
+          <TextField
+            select
+            label="Rol principal"
+            fullWidth
+            value={roleValue}
+            onChange={handleRoleChange}
+            helperText="Schimbarea rolului principal actualizează rolurile în users-service și auth-service."
+          >
+            <MenuItem value="">(nesetat)</MenuItem>
+            {roleOptions.map((r) => (
+              <MenuItem key={r} value={r}>
+                {r}
+              </MenuItem>
+            ))}
+          </TextField>
         </Box>
       )}
 
-      {/* TAB AUDIT */}
-      {tab === "audit" && (
+      {tab === 1 && (
         <Box>
           {auditLoading && <LinearProgress sx={{ mb: 2 }} />}
-          {auditError && (
-            <Typography color="error" sx={{ mb: 2 }}>
-              {auditError}
+          <Typography variant="subtitle1" sx={{ mb: 1 }}>
+            Audit modificări profil
+          </Typography>
+          {audit.items.length === 0 && !auditLoading ? (
+            <Typography variant="body2" color="text.secondary">
+              Nu există înregistrări de audit pentru acest utilizator.
             </Typography>
+          ) : (
+            <Table size="small">
+              <TableHead>
+                <TableRow>
+                  <TableCell>La</TableCell>
+                  <TableCell>Eveniment</TableCell>
+                  <TableCell>Chei schimbate</TableCell>
+                  <TableCell>Before → After</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {audit.items.map((row) => (
+                  <TableRow key={row.id}>
+                    <TableCell>
+                      {row.at
+                        ? new Date(row.at).toLocaleString()
+                        : "—"}
+                    </TableCell>
+                    <TableCell>{row.event}</TableCell>
+                    <TableCell>
+                      {Array.isArray(row.changedKeys)
+                        ? row.changedKeys.join(", ")
+                        : JSON.stringify(row.changedKeys)}
+                    </TableCell>
+                    <TableCell>
+                      <Typography variant="caption">
+                        {JSON.stringify(row.before)} {" → "}{" "}
+                        {JSON.stringify(row.after)}
+                      </Typography>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
           )}
-
-          {!auditLoading && auditItems.length === 0 && (
-            <Typography
-              variant="body2"
-              color="text.secondary"
-            >
-              Nu există modificări înregistrate pentru acest utilizator.
-            </Typography>
-          )}
-
-          <Stack spacing={2}>
-            {auditItems.map((ev) => (
-              <Box key={ev.id}>
-                <Stack
-                  direction="row"
-                  justifyContent="space-between"
-                  alignItems="center"
-                  sx={{ mb: 0.5 }}
-                >
-                  <Typography variant="subtitle2">
-                    {ev.event}
-                  </Typography>
-                  <Typography variant="caption" color="text.secondary">
-                    {ev.at
-                      ? dayjs(ev.at).format("DD.MM.YYYY HH:mm")
-                      : ""}
-                  </Typography>
-                </Stack>
-                <Typography variant="body2" color="text.secondary">
-                  Chei modificate:{" "}
-                  {Array.isArray(ev.changedKeys)
-                    ? ev.changedKeys.join(", ")
-                    : JSON.stringify(ev.changedKeys)}
-                </Typography>
-                {ev.before && (
-                  <Typography
-                    variant="caption"
-                    sx={{ display: "block", mt: 0.5 }}
-                  >
-                    <strong>Înainte:</strong>{" "}
-                    {JSON.stringify(ev.before)}
-                  </Typography>
-                )}
-                {ev.after && (
-                  <Typography
-                    variant="caption"
-                    sx={{ display: "block" }}
-                  >
-                    <strong>După:</strong>{" "}
-                    {JSON.stringify(ev.after)}
-                  </Typography>
-                )}
-                <Divider sx={{ mt: 1 }} />
-              </Box>
-            ))}
-          </Stack>
         </Box>
       )}
     </Paper>

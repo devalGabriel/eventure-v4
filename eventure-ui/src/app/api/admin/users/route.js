@@ -8,6 +8,9 @@ export async function GET(req) {
 
   const upstream = await usersFetch(`/admin/users${search}`, {
     method: 'GET',
+    headers: {
+      'x-user-role': 'ADMIN', // 👈 validare minimală în users-service
+    },
   });
 
   const forwarded = await forwardUsersResponse(upstream);

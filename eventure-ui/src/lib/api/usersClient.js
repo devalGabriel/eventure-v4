@@ -13,6 +13,7 @@ async function handleResponse(res) {
   }
 }
 
+// 🔹 LISTĂ USERS (admin)
 export async function adminListUsers(params = {}) {
   const search = new URLSearchParams();
 
@@ -33,7 +34,7 @@ export async function adminListUsers(params = {}) {
 
   const res = await fetch(url, {
     method: 'GET',
-    credentials: 'include',
+    credentials: 'include'
   });
 
   return handleResponse(res);
@@ -43,56 +44,47 @@ export async function adminListUsers(params = {}) {
 export async function adminGetUser(id) {
   const res = await fetch(`${API_BASE}/${id}`, {
     method: 'GET',
-    credentials: 'include',
+    credentials: 'include'
   });
   return handleResponse(res);
 }
 
-export async function adminGetUserAudit(id) {
-  const res = await fetch(`/api/admin/users/${id}/audit`, {
+// 🔹 AUDIT USER
+export async function adminGetUserAudit(id, params = {}) {
+  const search = new URLSearchParams();
+  const page = params.page ?? 1;
+  const pageSize = params.pageSize ?? 50;
+  search.set('page', String(page));
+  search.set('pageSize', String(pageSize));
+
+  const query = search.toString();
+  const url = `${API_BASE}/${id}/audit${query ? `?${query}` : ''}`;
+
+  const res = await fetch(url, {
     method: 'GET',
-    credentials: 'include',
+    credentials: 'include'
   });
   return handleResponse(res);
 }
 
-export async function adminForceLogoutUser(id) {
-  const res = await fetch(`/api/admin/users/${id}/force-logout`, {
-    method: 'POST',
-    credentials: 'include',
-  });
-  return handleResponse(res);
-}
-// 🔹 UPDATE FLAGURI DE ADMIN (deocamdată doar isActive, dacă îl folosești)
+// 🔹 UPDATE PROFIL (nume, email, phone, locale, isActive)
 export async function adminUpdateUser(id, payload) {
-
   const res = await fetch(`${API_BASE}/${id}`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
     credentials: 'include',
-    body: JSON.stringify(payload),
+    body: JSON.stringify(payload)
   });
   return handleResponse(res);
 }
 
-// PATCH profil (fullName/phone/locale/isActive...)
-export async function adminUpdateUserProfile(id, payload) {
-  const res = await fetch(`${API_BASE}/${id}`, {
-    method: 'PATCH',
-    headers: { 'Content-Type': 'application/json' },
-    credentials: 'include',
-    body: JSON.stringify(payload),
-  });
-  return handleResponse(res);
-}
-
-// 🔹 UPDATE ROLURI (merge în users-service → /v1/users/:id/roles)
+// 🔹 UPDATE ROLURI (ADMIN/CLIENT/PROVIDER)
 export async function adminUpdateUserRoles(id, payload) {
   const res = await fetch(`${API_BASE}/${id}/roles`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
     credentials: 'include',
-    body: JSON.stringify(payload),
+    body: JSON.stringify(payload)
   });
   return handleResponse(res);
 }

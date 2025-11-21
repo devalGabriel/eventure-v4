@@ -1,8 +1,5 @@
 // services/users-service/src/routes/me.js
 const { authMe } = require('../lib/authClient');
-const path = require('path');
-const fs = require('fs/promises');
-const { randomUUID } = require('crypto');
 
 module.exports = async function routes(fastify) {
   const { prisma } = fastify;
@@ -11,7 +8,7 @@ module.exports = async function routes(fastify) {
     await prisma.role.upsert({
       where: { name: 'CLIENT' },
       update: {},
-      create: { name: 'CLIENT' },
+      create: { name: 'CLIENT' }
     });
   }
 
@@ -22,42 +19,40 @@ module.exports = async function routes(fastify) {
 
     if (authUser.id) {
       prof = await prisma.userProfile.findUnique({
-        where: { authUserId: String(authUser.id) },
+        where: { authUserId: String(authUser.id) }
       });
     }
     if (!prof && authUser.email) {
       prof = await prisma.userProfile.findUnique({
-        where: { email: authUser.email },
+        where: { email: authUser.email }
       });
     }
 
     if (!prof) {
       prof = await prisma.userProfile.create({
         data: {
-          authUserId: String(authUser.id || randomUUID()),
+          authUserId: String(authUser.id || ''),
           email: authUser.email || '',
           fullName:
             authUser.fullName ||
-            (authUser.email
-              ? authUser.email.split('@')[0]
-              : 'User'),
+            (authUser.email ? authUser.email.split('@')[0] : 'User'),
           isActive: true,
-          roles: { connect: [{ name: 'CLIENT' }] },
-        },
+          roles: { connect: [{ name: 'CLIENT' }] }
+        }
       });
     } else {
-      // dacă profilul există dar nu are roluri, conectează CLIENT
       const withRoles = await prisma.userProfile.findUnique({
         where: { id: prof.id },
-        include: { roles: true },
+        include: { roles: true }
       });
       if (!withRoles.roles || withRoles.roles.length === 0) {
         await prisma.userProfile.update({
           where: { id: prof.id },
-          data: { roles: { connect: [{ name: 'CLIENT' }] } },
+          data: { roles: { connect: [{ name: 'CLIENT' }] } }
         });
       }
     }
+
     return prof;
   }
 
@@ -70,7 +65,7 @@ module.exports = async function routes(fastify) {
     const prof = await getOrCreateProfile(me);
     const withRoles = await prisma.userProfile.findUnique({
       where: { id: prof.id },
-      include: { roles: true },
+      include: { roles: true }
     });
 
     return {
@@ -78,7 +73,7 @@ module.exports = async function routes(fastify) {
       email: withRoles.email,
       name: withRoles.fullName,
       avatarUrl: withRoles.avatarUrl || null,
-      roles: (withRoles.roles || []).map((r) => r.name),
+      roles: (withRoles.roles || []).map((r) => r.name)
     };
   });
 
@@ -95,9 +90,9 @@ module.exports = async function routes(fastify) {
       where: { id: prof.id },
       data: {
         ...(typeof fullName === 'string' ? { fullName } : {}),
-        ...(typeof email === 'string' ? { email } : {}),
+        ...(typeof email === 'string' ? { email } : {})
       },
-      include: { roles: true },
+      include: { roles: true }
     });
 
     return {
@@ -105,7 +100,7 @@ module.exports = async function routes(fastify) {
       email: updated.email,
       name: updated.fullName,
       avatarUrl: updated.avatarUrl || null,
-      roles: (updated.roles || []).map((r) => r.name),
+      roles: (updated.roles || []).map((r) => r.name)
     };
   });
 
@@ -125,10 +120,12 @@ module.exports = async function routes(fastify) {
       process.env.PUBLIC_USERS_BASE_URL ||
       `${req.protocol}://${req.headers.host}`;
     const abs = rel.startsWith('http') ? rel : `${base}${rel}`;
+
     await prisma.userProfile.update({
       where: { id: prof.id },
-      data: { avatarUrl: abs },
+      data: { avatarUrl: abs }
     });
+
     return { url: abs };
   });
 };
