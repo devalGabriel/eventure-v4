@@ -17,15 +17,16 @@ export default function EventProgramPage() {
     setLoading(true); setErr(null);
     try {
       const r = await fetch(`/api/events/${eventId}/programs`, { cache: 'no-store' });
-      const t = await r.text();
-      if (!r.ok) throw new Error(t || 'failed');
-      setRows(JSON.parse(t));
+      if (!r.ok) throw new Error(await r.text());
+      const d = await r.json();
+      setRows(Array.isArray(d) ? d : []);
     } catch (e) {
       setErr(String(e));
     } finally {
       setLoading(false);
     }
   }
+
 
   async function add() {
     try {
@@ -41,6 +42,7 @@ export default function EventProgramPage() {
       alert('Add failed: ' + String(e));
     }
   }
+
 
   async function remove(id) {
     if (!confirm('Ștergi slotul?')) return;

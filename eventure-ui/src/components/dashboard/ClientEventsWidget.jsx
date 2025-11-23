@@ -11,6 +11,8 @@ import {
   Button,
 } from "@mui/material";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { extractLocaleAndPath } from "@/lib/extractLocaleAndPath";
 
 const metricBoxSx = {
   p: 1.25,
@@ -24,6 +26,10 @@ export default function ClientEventsWidget() {
   const [rows, setRows] = useState(null);
   const [loading, setLoading] = useState(true);
   const [now] = useState(() => Date.now());
+  const pathname = usePathname();
+
+  const {locale, path} = extractLocaleAndPath(pathname)
+  const eventsBasePath = `/${locale}/events`;
 
   useEffect(() => {
     (async () => {
@@ -106,7 +112,7 @@ export default function ClientEventsWidget() {
       </Stack>
 
       {/* următorul eveniment */}
-      <Box sx={{ ...metricBoxSx, mt: 0.5 }}>
+            <Box sx={{ ...metricBoxSx, mt: 0.5 }}>
         <Typography variant="caption" color="text.secondary">
           URMĂTORUL EVENIMENT
         </Typography>
@@ -117,18 +123,38 @@ export default function ClientEventsWidget() {
             alignItems="center"
             sx={{ mt: 0.5 }}
           >
-            <Box sx={{ mr: 1 }}>
-              <Typography variant="body2" sx={{ fontWeight: 500 }}>
+            <Box sx={{ mr: 1, minWidth: 0 }}>
+              <Typography
+                variant="body2"
+                sx={{ fontWeight: 500 }}
+                noWrap
+              >
                 {stats.next.name}
               </Typography>
-              <Typography variant="caption" color="text.secondary">
+              <Typography
+                variant="caption"
+                color="text.secondary"
+                noWrap
+              >
                 {stats.next.type} •{" "}
-                {new Date(stats.next.date).toLocaleString()}
+                {stats.next.date
+                  ? new Date(stats.next.date).toLocaleString()
+                  : "fără dată"}
+              </Typography>
+              <Typography
+                variant="caption"
+                color="text.secondary"
+                noWrap
+              >
+                {(stats.next.city || stats.next.location || "-") +
+                  (stats.next.guestCount
+                    ? ` • ${stats.next.guestCount} invitați`
+                    : "")}
               </Typography>
             </Box>
             <Button
               component={Link}
-              href={`events/${stats.next.id}`}
+              href={`${eventsBasePath}/${stats.next.id}`}
               variant="outlined"
               size="small"
             >
@@ -142,11 +168,12 @@ export default function ClientEventsWidget() {
         )}
       </Box>
 
+
       {/* acțiuni rapide */}
       <Stack direction="row" spacing={1} sx={{ mt: 0.5 }} flexWrap="wrap">
         <Button
           component={Link}
-          href="events/new"
+          href={`${eventsBasePath}/new`}
           variant="contained"
           size="small"
         >
@@ -154,7 +181,7 @@ export default function ClientEventsWidget() {
         </Button>
         <Button
           component={Link}
-          href="events"
+          href={`${eventsBasePath}`}
           variant="outlined"
           size="small"
         >

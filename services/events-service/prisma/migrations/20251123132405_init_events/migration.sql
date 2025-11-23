@@ -1,0 +1,5 @@
+-- AlterTable
+ALTER TABLE `event` ADD COLUMN `city` VARCHAR(191) NULL,
+    ADD COLUMN `guestCount` INTEGER NULL,
+    ADD COLUMN `locationType` VARCHAR(191) NULL,
+    ADD COLUMN `style` VARCHAR(191) NULL;

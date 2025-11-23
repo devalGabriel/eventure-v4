@@ -1,49 +1,65 @@
+// services/events-service/prisma/seed.js
 import { PrismaClient } from '@prisma/client';
+
 const prisma = new PrismaClient();
 
 async function main() {
   const templates = [
     {
       type: 'wedding',
-      name: 'Wedding default',
+      name: 'default',
+      description: 'Timeline standard pentru nuntă',
       taskJson: [
-        { title: 'Select venue', offsetDays: -180 },
-        { title: 'Book band/DJ', offsetDays: -150 },
-        { title: 'Send invitations', offsetDays: -90 },
-        { title: 'Confirm menu', offsetDays: -30 }
-      ]
+        { title: 'Stabilește bugetul', daysBefore: 180 },
+        { title: 'Rezervă locația pentru petrecere', daysBefore: 150 },
+        { title: 'Rezervă biserica', daysBefore: 150 },
+        { title: 'Alege formatia / DJ', daysBefore: 120 },
+        { title: 'Trimite invitațiile', daysBefore: 60 },
+        { title: 'Confirmă numărul de invitați', daysBefore: 14 },
+        { title: 'Confirmă meniul cu restaurantul', daysBefore: 7 },
+      ],
     },
     {
       type: 'baptism',
-      name: 'Baptism default',
+      name: 'default',
+      description: 'Timeline standard pentru botez',
       taskJson: [
-        { title: 'Book church', offsetDays: -60 },
-        { title: 'Choose restaurant', offsetDays: -45 },
-        { title: 'Invitations', offsetDays: -30 }
-      ]
+        { title: 'Stabilește data și biserica', daysBefore: 60 },
+        { title: 'Rezervă restaurantul', daysBefore: 60 },
+        { title: 'Alege nașii', daysBefore: 45 },
+        { title: 'Trimite invitațiile', daysBefore: 30 },
+      ],
     },
     {
       type: 'corporate',
-      name: 'Corporate default',
+      name: 'default',
+      description: 'Timeline standard pentru eveniment corporate',
       taskJson: [
-        { title: 'Define agenda', offsetDays: -60 },
-        { title: 'Book venue', offsetDays: -45 },
-        { title: 'Catering', offsetDays: -30 }
-      ]
-    }
+        { title: 'Definește obiectivele evenimentului', daysBefore: 90 },
+        { title: 'Stabilește buget și locație', daysBefore: 75 },
+        { title: 'Alege furnizorii principali', daysBefore: 60 },
+        { title: 'Trimite invitațiile', daysBefore: 30 },
+      ],
+    },
   ];
 
-  for (const t of templates) {
+  for (const tpl of templates) {
     await prisma.eventTypeTemplate.upsert({
-      where: { type_name: { type: t.type, name: t.name } },
-      update: { taskJson: t.taskJson },
-      create: t
+      where: { type_name: { type: tpl.type, name: tpl.name } },
+      update: {
+        description: tpl.description,
+        taskJson: tpl.taskJson,
+      },
+      create: tpl,
     });
   }
-
-  console.log('Seed complete.');
 }
 
 main()
-  .catch((e) => { console.error(e); process.exit(1); })
-  .finally(async () => { await prisma.$disconnect(); });
+  .catch((e) => {
+    console.error(e);
+    process.exit(1);
+  })
+  .finally(async () => {
+    await prisma.$disconnect();
+  });

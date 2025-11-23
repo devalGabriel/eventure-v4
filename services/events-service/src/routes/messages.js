@@ -12,16 +12,18 @@ export function messagesRoutes(app) {
   const router = express.Router();
 
   // GET: lista mesaje dintr-un eveniment
-  router.get('/events/:eventId/messages', async (req, res, next) => {
-    try {
-      const { eventId } = req.params;
-      const messages = await prisma.eventMessage.findMany({
-        where: { eventId: Number(eventId) },
-        orderBy: { createdAt: 'asc' }
-      });
-      return res.json(messages);
-    } catch (err) { next(err); }
-  });
+router.get('/events/:eventId/messages', async (req, res, next) => {
+  try {
+    const eventId = req.params.eventId;
+    const msgs = await prisma.eventMessage.findMany({
+      where: { eventId },
+      orderBy: { createdAt: 'asc' },
+    });
+    return res.json(msgs); // array simplu
+  } catch (err) {
+    next(err);
+  }
+});
 
   // POST: adaugă un mesaj nou
   router.post('/events/:eventId/messages', async (req, res, next) => {
