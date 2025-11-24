@@ -1,6 +1,6 @@
 // services/users-service/src/routes/users.js
-const { userIdParam, updateProfileBody } = require('../lib/validators');
-const { enqueueOutbox } = require('../lib/outbox');
+const { userIdParam, authUserIdParam, updateProfileBody, roleMutationBody } = require('../lib/validators');
+  const { enqueueOutbox } = require('../lib/outbox');
 const { OUT } = require('../lib/events');
 const { mapUser, mapUsers } = require('../lib/dto');
 const { diffKeys } = require('../lib/diff');
@@ -50,9 +50,9 @@ async function routes(fastify) {
 
     if (query) {
       where.OR = [
-        { email:    { contains: query } },
+        { email: { contains: query } },
         { fullName: { contains: query } },
-        { phone:    { contains: query } }
+        { phone: { contains: query } }
       ];
     }
 
@@ -212,21 +212,21 @@ async function routes(fastify) {
         deletedAt: null,
         ...(role && role !== 'all'
           ? {
-              roles: {
-                some: {
-                  name: role.toUpperCase()
-                }
+            roles: {
+              some: {
+                name: role.toUpperCase()
               }
             }
+          }
           : {}),
         ...(q && q.trim()
           ? {
-              OR: [
-                { email:    { contains: q, mode: 'insensitive' } },
-                { fullName: { contains: q, mode: 'insensitive' } },
-                { phone:    { contains: q, mode: 'insensitive' } }
-              ]
-            }
+            OR: [
+              { email: { contains: q, mode: 'insensitive' } },
+              { fullName: { contains: q, mode: 'insensitive' } },
+              { phone: { contains: q, mode: 'insensitive' } }
+            ]
+          }
           : {})
       };
 
@@ -281,6 +281,31 @@ async function routes(fastify) {
       };
     }
   );
+fastify.get(
+  '/v1/admin/users/:id/byAuthId',
+  { preHandler: requireAdmin },
+  async (request, reply) => {
+    // aici NU mai validăm ca UUID
+    const { id } = authUserIdParam.parse(request.params);
+
+    try {
+      const user = await prisma.userProfile.findUnique({
+        where: { authUserId: String(id) },
+      });
+
+      if (!user) {
+        return reply.notFound('User not found');
+      }
+
+      // păstrăm același mapping ca în celelalte rute admin
+      return reply.send(mapUser(user));
+    } catch (error) {
+      console.error('ERROR PRISMA (byAuthId): ', error);
+      return reply.internalServerError('Unexpected error');
+    }
+  }
+);
+
 
   // --------- ADMIN UPDATE: PATCH /v1/admin/users/:id ----------
   fastify.patch('/v1/admin/users/:id',

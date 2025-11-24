@@ -1,5 +1,5 @@
-'use client';
-import { useEffect, useMemo, useState } from 'react';
+"use client";
+import { useEffect, useMemo, useState } from "react";
 import {
   Box,
   Button,
@@ -19,20 +19,22 @@ import {
   DialogContent,
   DialogActions,
   Tooltip,
-} from '@mui/material';
-import SaveIcon from '@mui/icons-material/Save';
-import Link from 'next/link';
-import { useParams } from 'next/navigation';
-import { getRoleServer } from '@/lib/utils';
-import { useNotify } from '@/components/providers/NotificationProvider';
+} from "@mui/material";
+import SaveIcon from "@mui/icons-material/Save";
+import Link from "next/link";
+import { useParams } from "next/navigation";
+import { getRoleServer } from "@/lib/utils";
+import { useNotify } from "@/components/providers/NotificationProvider";
+import BudgetEstimatePanel from "@/components/events/BudgetEstimatePanel";
+import BriefTemplatePanel from "@/components/events/BriefTemplatePanel";
 
-const statusOptions = ['DRAFT','PLANNING','ACTIVE','COMPLETED','CANCELED'];
+const statusOptions = ["DRAFT", "PLANNING", "ACTIVE", "COMPLETED", "CANCELED"];
 const taskStatusColor = (s) =>
   ({
-    TODO: 'default',
-    IN_PROGRESS: 'info',
-    DONE: 'success',
-  }[s] || 'default');
+    TODO: "default",
+    IN_PROGRESS: "info",
+    DONE: "success",
+  }[s] || "default");
 
 function useEvent(id) {
   const [data, setData] = useState(null);
@@ -44,7 +46,7 @@ function useEvent(id) {
     setLoading(true);
     setError(null);
     try {
-      const r = await fetch(`/api/events/${id}`, { cache: 'no-store' });
+      const r = await fetch(`/api/events/${id}`, { cache: "no-store" });
       const text = await r.text();
       if (!r.ok) {
         let payload = null;
@@ -70,7 +72,7 @@ function useEvent(id) {
       setData(null);
       setError({
         status: 0,
-        message: 'Network / parse error',
+        message: "Network / parse error",
       });
     } finally {
       setLoading(false);
@@ -84,12 +86,11 @@ function useEvent(id) {
   return { data, loading, error, reload: load };
 }
 
-
 export default function EventDetailsPage() {
   const { id } = useParams();
   const { data: event, loading, error, reload } = useEvent(id);
   const [tab, setTab] = useState(0);
-  const [role, setRole] = useState('client');
+  const [role, setRole] = useState("client");
 
   useEffect(() => {
     async function fetchRole() {
@@ -128,7 +129,7 @@ export default function EventDetailsPage() {
       <Box sx={{ p: 2 }}>
         <Typography variant="h6">Eroare la încărcare</Typography>
         <Typography variant="body2" color="text.secondary">
-          {error.message || 'A apărut o eroare neașteptată.'}
+          {error.message || "A apărut o eroare neașteptată."}
         </Typography>
       </Box>
     );
@@ -143,23 +144,27 @@ export default function EventDetailsPage() {
   }
 
   return (
-    <Stack spacing={2} sx={{ p:2 }}>
+    <Stack spacing={2} sx={{ p: 2 }}>
       <Stack direction="row" alignItems="center" justifyContent="space-between">
         <Stack>
           <Typography variant="h5">{event.name}</Typography>
-          <Typography variant="body2" color="text.secondary">{event.type} • {event.date ? new Date(event.date).toLocaleString() : 'fără dată'} • {event.location || '-'}</Typography>
+          <Typography variant="body2" color="text.secondary">
+            {event.type} •{" "}
+            {event.date ? new Date(event.date).toLocaleString() : "fără dată"} •{" "}
+            {event.location || "-"}
+          </Typography>
         </Stack>
         <Chip label={event.status} />
       </Stack>
 
-            <Tabs
+      <Tabs
         value={tab}
         onChange={(_, v) => setTab(v)}
         variant="scrollable"
         allowScrollButtonsMobile
       >
         <Tab label="Overview" />
-        <Tab label="Brief & nevoi" />
+        <Tab label="Brief & needs" />
         <Tab label="Tasks" />
         <Tab label="Invitations" />
         <Tab label="Messages" />
@@ -176,24 +181,23 @@ export default function EventDetailsPage() {
       {tab === 4 && <MessagesTab eventId={event.id} />}
       {tab === 5 && <FilesTab eventId={event.id} />}
       {tab === 6 && <OffersTab eventId={event.id} role={role} />}
-
     </Stack>
   );
 }
 
 function OverviewTab({ event, onSaved }) {
-  const [name, setName] = useState('');
-  const [status, setStatus] = useState('DRAFT');
-  const [location, setLocation] = useState('');
-  const [date, setDate] = useState(''); // string pentru <input type="datetime-local">
+  const [name, setName] = useState("");
+  const [status, setStatus] = useState("DRAFT");
+  const [location, setLocation] = useState("");
+  const [date, setDate] = useState(""); // string pentru <input type="datetime-local">
   const [availableStatuses, setAvailableStatuses] = useState([]);
   const { notify } = useNotify();
 
   // sincronizează state-ul cu event, inclusiv data
   useEffect(() => {
-    setName(event.name || '');
-    setStatus(event.status || 'DRAFT');
-    setLocation(event.location || '');
+    setName(event.name || "");
+    setStatus(event.status || "DRAFT");
+    setLocation(event.location || "");
 
     if (event.date) {
       const d = new Date(event.date);
@@ -203,14 +207,14 @@ function OverviewTab({ event, onSaved }) {
         .slice(0, 16); // YYYY-MM-DDTHH:mm
       setDate(local);
     } else {
-      setDate('');
+      setDate("");
     }
   }, [event]);
 
   useEffect(() => {
     async function fetchStatuses() {
       const r = await fetch(`/api/events/${event.id}/available-status`, {
-        cache: 'no-store',
+        cache: "no-store",
       });
       const d = await r.json();
       setAvailableStatuses(d.allowed || []);
@@ -227,15 +231,15 @@ function OverviewTab({ event, onSaved }) {
     };
 
     const r = await fetch(`/api/events/${event.id}`, {
-      method: 'PATCH',
-      headers: { 'content-type': 'application/json' },
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
       body: JSON.stringify(payload),
     });
     if (r.ok) {
-      notify('Salvat cu succes.', 'success');
+      notify("Salvat cu succes.", "success");
       onSaved();
     } else {
-      notify('Nu s-a putut salva (verifică tranziția de status).', 'error');
+      notify("Nu s-a putut salva (verifică tranziția de status).", "error");
     }
   }
 
@@ -280,11 +284,7 @@ function OverviewTab({ event, onSaved }) {
           />
 
           <Stack direction="row" spacing={2}>
-            <Button
-              variant="contained"
-              startIcon={<SaveIcon />}
-              onClick={save}
-            >
+            <Button variant="contained" startIcon={<SaveIcon />} onClick={save}>
               Salvează
             </Button>
             <Button component={Link} href="../events" variant="outlined">
@@ -301,22 +301,22 @@ function BriefTab({ event }) {
   const { notify } = useNotify();
   const [loading, setLoading] = useState(true);
 
-  const [guestCount, setGuestCount] = useState('');
-  const [city, setCity] = useState('');
-  const [style, setStyle] = useState('');
-  const [locationType, setLocationType] = useState('');
-  const [notes, setNotes] = useState('');
+  const [guestCount, setGuestCount] = useState("");
+  const [city, setCity] = useState("");
+  const [style, setStyle] = useState("");
+  const [locationType, setLocationType] = useState("");
+  const [notes, setNotes] = useState("");
 
   const [needs, setNeeds] = useState([]);
-  const [newNeedLabel, setNewNeedLabel] = useState('');
-  const [newNeedBudget, setNewNeedBudget] = useState('');
+  const [newNeedLabel, setNewNeedLabel] = useState("");
+  const [newNeedBudget, setNewNeedBudget] = useState("");
 
   async function load() {
     setLoading(true);
     try {
       const [brRes, needsRes] = await Promise.all([
-        fetch(`/api/events/${event.id}/brief`, { cache: 'no-store' }),
-        fetch(`/api/events/${event.id}/needs`, { cache: 'no-store' }),
+        fetch(`/api/events/${event.id}/brief`, { cache: "no-store" }),
+        fetch(`/api/events/${event.id}/needs`, { cache: "no-store" }),
       ]);
 
       const brief = brRes.ok ? await brRes.json() : {};
@@ -324,29 +324,29 @@ function BriefTab({ event }) {
 
       setGuestCount(
         brief.guestCount === null || brief.guestCount === undefined
-          ? ''
+          ? ""
           : String(brief.guestCount)
       );
-      setCity(brief.city || '');
-      setStyle(brief.style || '');
-      setLocationType(brief.locationType || '');
-      setNotes(brief.notes || '');
+      setCity(brief.city || "");
+      setStyle(brief.style || "");
+      setLocationType(brief.locationType || "");
+      setNotes(brief.notes || "");
 
       setNeeds(
         Array.isArray(needsData)
           ? needsData.map((n) => ({
               id: n.id,
-              label: n.label || '',
+              label: n.label || "",
               budgetPlanned:
                 n.budgetPlanned === null || n.budgetPlanned === undefined
-                  ? ''
+                  ? ""
                   : String(n.budgetPlanned),
             }))
           : []
       );
     } catch (e) {
       console.error(e);
-      notify('Nu s-a putut încărca brief-ul.', 'error');
+      notify("Nu s-a putut încărca brief-ul.", "error");
     } finally {
       setLoading(false);
     }
@@ -371,8 +371,8 @@ function BriefTab({ event }) {
     if (!label) return;
 
     const b =
-      newNeedBudget === '' || newNeedBudget === null
-        ? ''
+      newNeedBudget === "" || newNeedBudget === null
+        ? ""
         : String(newNeedBudget);
 
     setNeeds((prev) => [
@@ -384,8 +384,8 @@ function BriefTab({ event }) {
       },
     ]);
 
-    setNewNeedLabel('');
-    setNewNeedBudget('');
+    setNewNeedLabel("");
+    setNewNeedBudget("");
   }
 
   async function save() {
@@ -394,9 +394,7 @@ function BriefTab({ event }) {
 
       const briefPayload = {
         guestCount:
-          guestCount === '' || guestCount === null
-            ? null
-            : Number(guestCount),
+          guestCount === "" || guestCount === null ? null : Number(guestCount),
         city,
         style,
         locationType,
@@ -404,8 +402,8 @@ function BriefTab({ event }) {
       };
 
       await fetch(`/api/events/${event.id}/brief`, {
-        method: 'PUT',
-        headers: { 'content-type': 'application/json' },
+        method: "PUT",
+        headers: { "content-type": "application/json" },
         body: JSON.stringify(briefPayload),
       });
 
@@ -413,23 +411,23 @@ function BriefTab({ event }) {
         needs: needs.map((n) => ({
           label: n.label,
           budgetPlanned:
-            n.budgetPlanned === '' || n.budgetPlanned === null
+            n.budgetPlanned === "" || n.budgetPlanned === null
               ? null
               : Number(n.budgetPlanned),
         })),
       };
 
       await fetch(`/api/events/${event.id}/needs`, {
-        method: 'PUT',
-        headers: { 'content-type': 'application/json' },
+        method: "PUT",
+        headers: { "content-type": "application/json" },
         body: JSON.stringify(needsPayload),
       });
 
-      notify('Brief & nevoi salvate.', 'success');
+      notify("Brief & nevoi salvate.", "success");
       await load();
     } catch (e) {
       console.error(e);
-      notify('Nu s-a putut salva brief-ul.', 'error');
+      notify("Nu s-a putut salva brief-ul.", "error");
     } finally {
       setLoading(false);
     }
@@ -441,7 +439,7 @@ function BriefTab({ event }) {
         <Stack spacing={3} maxWidth={700}>
           <Typography variant="h6">Profil eveniment</Typography>
 
-          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
+          <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
             <TextField
               label="Număr invitați (estimativ)"
               type="number"
@@ -455,7 +453,7 @@ function BriefTab({ event }) {
             />
           </Stack>
 
-          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
+          <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
             <TextField
               label="Stil eveniment (elegant, rustic, boho...)"
               value={style}
@@ -483,9 +481,9 @@ function BriefTab({ event }) {
           <Typography variant="h6">Nevoi de servicii</Typography>
 
           <Stack
-            direction={{ xs: 'column', sm: 'row' }}
+            direction={{ xs: "column", sm: "row" }}
             spacing={2}
-            alignItems={{ xs: 'stretch', sm: 'flex-end' }}
+            alignItems={{ xs: "stretch", sm: "flex-end" }}
           >
             <TextField
               label="Serviciu (ex. Muzică / DJ)"
@@ -508,17 +506,15 @@ function BriefTab({ event }) {
             {needs.map((n, idx) => (
               <Card key={n.id || idx} sx={{ p: 1 }}>
                 <Stack
-                  direction={{ xs: 'column', sm: 'row' }}
+                  direction={{ xs: "column", sm: "row" }}
                   spacing={1}
-                  alignItems={{ xs: 'flex-start', sm: 'center' }}
+                  alignItems={{ xs: "flex-start", sm: "center" }}
                   justifyContent="space-between"
                 >
                   <TextField
                     label="Serviciu"
                     value={n.label}
-                    onChange={(e) =>
-                      updateNeed(idx, { label: e.target.value })
-                    }
+                    onChange={(e) => updateNeed(idx, { label: e.target.value })}
                     sx={{ flex: 2 }}
                   />
                   <TextField
@@ -543,21 +539,22 @@ function BriefTab({ event }) {
               </Card>
             ))}
             {!needs.length && (
-              <Box sx={{ p: 2, color: 'text.secondary' }}>
+              <Box sx={{ p: 2, color: "text.secondary" }}>
                 Nu ai definit încă nevoi de servicii.
               </Box>
             )}
           </Stack>
 
           <Stack direction="row" spacing={2}>
-            <Button
-              variant="contained"
-              onClick={save}
-              disabled={loading}
-            >
+            <Button variant="contained" onClick={save} disabled={loading}>
               Salvează brief & nevoi
             </Button>
           </Stack>
+          <BriefTemplatePanel eventId={event.id} />
+
+          <Box sx={{ mt: 2 }}>
+            <BudgetEstimatePanel eventId={event.id} />
+          </Box>
         </Stack>
       </CardContent>
     </Card>
@@ -567,31 +564,31 @@ function BriefTab({ event }) {
 function TasksTab({ eventId, eventDate }) {
   const { notify } = useNotify();
   const [items, setItems] = useState([]);
-  const [title, setTitle] = useState('');
-  const [dueDate, setDueDate] = useState('');
+  const [title, setTitle] = useState("");
+  const [dueDate, setDueDate] = useState("");
   const [loading, setLoading] = useState(false);
   const [generating, setGenerating] = useState(false);
 
   // pentru dialog de editare
   const [editingTask, setEditingTask] = useState(null);
-  const [editTitle, setEditTitle] = useState('');
-  const [editDueDate, setEditDueDate] = useState('');
+  const [editTitle, setEditTitle] = useState("");
+  const [editDueDate, setEditDueDate] = useState("");
 
   const DAY_MS = 24 * 60 * 60 * 1000;
 
   function normalizeDateString(iso) {
-    if (!iso) return '';
+    if (!iso) return "";
     // așteptăm ISO de la backend
     return new Date(iso).toISOString().slice(0, 10);
   }
 
   useEffect(() => {
     if (editingTask) {
-      setEditTitle(editingTask.title || '');
+      setEditTitle(editingTask.title || "");
       setEditDueDate(normalizeDateString(editingTask.dueDate));
     } else {
-      setEditTitle('');
-      setEditDueDate('');
+      setEditTitle("");
+      setEditDueDate("");
     }
   }, [editingTask]);
 
@@ -599,17 +596,17 @@ function TasksTab({ eventId, eventDate }) {
     setLoading(true);
     try {
       const r = await fetch(`/api/events/${eventId}/tasks`, {
-        cache: 'no-store',
+        cache: "no-store",
       });
       if (!r.ok) {
-        const txt = await r.text().catch(() => '');
-        throw new Error(txt || 'Failed to load tasks');
+        const txt = await r.text().catch(() => "");
+        throw new Error(txt || "Failed to load tasks");
       }
       const d = await r.json();
       setItems(Array.isArray(d) ? d : []);
     } catch (e) {
       console.error(e);
-      notify('Nu s-au putut încărca taskurile.', 'error');
+      notify("Nu s-au putut încărca taskurile.", "error");
     } finally {
       setLoading(false);
     }
@@ -627,28 +624,28 @@ function TasksTab({ eventId, eventDate }) {
       }
 
       const r = await fetch(`/api/events/${eventId}/tasks`, {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
+        method: "POST",
+        headers: { "content-type": "application/json" },
         body: JSON.stringify(payload),
       });
       if (!r.ok) {
-        const txt = await r.text().catch(() => '');
-        throw new Error(txt || 'Create failed');
+        const txt = await r.text().catch(() => "");
+        throw new Error(txt || "Create failed");
       }
-      setTitle('');
-      setDueDate('');
-      notify('Task adăugat.', 'success');
+      setTitle("");
+      setDueDate("");
+      notify("Task adăugat.", "success");
       await load();
     } catch (e) {
       console.error(e);
-      notify('Nu s-a putut adăuga taskul.', 'error');
+      notify("Nu s-a putut adăuga taskul.", "error");
     }
   }
 
   async function generateTimeline() {
     if (
       !confirm(
-        'Generezi timeline-ul implicit pentru acest eveniment?\nTaskurile existente NU vor fi șterse.'
+        "Generezi timeline-ul implicit pentru acest eveniment?\nTaskurile existente NU vor fi șterse."
       )
     )
       return;
@@ -656,18 +653,18 @@ function TasksTab({ eventId, eventDate }) {
     setGenerating(true);
     try {
       const r = await fetch(`/api/events/${eventId}/tasks/generate`, {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
+        method: "POST",
+        headers: { "content-type": "application/json" },
       });
       if (!r.ok) {
-        const txt = await r.text().catch(() => '');
-        throw new Error(txt || 'Generate failed');
+        const txt = await r.text().catch(() => "");
+        throw new Error(txt || "Generate failed");
       }
-      notify('Timeline generat pe baza șablonului de eveniment.', 'success');
+      notify("Timeline generat pe baza șablonului de eveniment.", "success");
       await load();
     } catch (e) {
       console.error(e);
-      notify('Nu s-a putut genera timeline-ul.', 'error');
+      notify("Nu s-a putut genera timeline-ul.", "error");
     } finally {
       setGenerating(false);
     }
@@ -679,56 +676,52 @@ function TasksTab({ eventId, eventDate }) {
       const payload = {};
       const t = editTitle.trim();
       if (t) payload.title = t;
-      if (editDueDate === '') {
+      if (editDueDate === "") {
         payload.dueDate = null;
       } else if (editDueDate) {
         payload.dueDate = editDueDate; // yyyy-mm-dd
       }
 
-      const r = await fetch(
-        `/api/events/${eventId}/tasks/${editingTask.id}`,
-        {
-          method: 'PATCH',
-          headers: { 'content-type': 'application/json' },
-          body: JSON.stringify(payload),
-        }
-      );
+      const r = await fetch(`/api/events/${eventId}/tasks/${editingTask.id}`, {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(payload),
+      });
       if (!r.ok) {
-        const txt = await r.text().catch(() => '');
-        throw new Error(txt || 'Update failed');
+        const txt = await r.text().catch(() => "");
+        throw new Error(txt || "Update failed");
       }
-      notify('Task actualizat.', 'success');
+      notify("Task actualizat.", "success");
       setEditingTask(null);
       await load();
     } catch (e) {
       console.error(e);
-      notify('Nu s-a putut actualiza taskul.', 'error');
+      notify("Nu s-a putut actualiza taskul.", "error");
     }
   }
 
-async function deleteTask() {
-  if (!editingTask) return;
-  try {
-    const r = await fetch(
-      `/api/events/${eventId}/tasks/${editingTask.id}`,
-      { method: 'DELETE' }
-    );
-    console.log("r.status: ", r.status)
-    console.log("r.ok: ", r.ok)
-    if (!r.ok && r.status !== 204) {
-      const txt = await r.text().catch(() => '');
-      throw new Error(txt || 'Delete failed');
-    }
+  async function deleteTask() {
+    if (!editingTask) return;
+    try {
+      const r = await fetch(`/api/events/${eventId}/tasks/${editingTask.id}`, {
+        method: "DELETE",
+      });
+      console.log("r.status: ", r.status);
+      console.log("r.ok: ", r.ok);
+      if (!r.ok && r.status !== 204) {
+        const txt = await r.text().catch(() => "");
+        throw new Error(txt || "Delete failed");
+      }
 
-    notify('Task șters.', 'success');
-    setEditingTask(false);
-    setEditingTask(null);
-    await load();
-  } catch (e) {
-    console.error(e);
-    notify('Nu s-a putut șterge taskul.', 'error');
+      notify("Task șters.", "success");
+      setEditingTask(false);
+      setEditingTask(null);
+      await load();
+    } catch (e) {
+      console.error(e);
+      notify("Nu s-a putut șterge taskul.", "error");
+    }
   }
-}
 
   useEffect(() => {
     load();
@@ -745,8 +738,7 @@ async function deleteTask() {
     });
 
     withDate.sort(
-      (a, b) =>
-        new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime()
+      (a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime()
     );
 
     // întâi cu dată, apoi fără
@@ -758,15 +750,14 @@ async function deleteTask() {
     const d = new Date(due);
     if (!Number.isFinite(d.getTime())) return null;
     const diff = Math.round(
-      (d.setHours(0, 0, 0, 0) - new Date().setHours(0, 0, 0, 0)) /
-        DAY_MS
+      (d.setHours(0, 0, 0, 0) - new Date().setHours(0, 0, 0, 0)) / DAY_MS
     );
     return diff;
   }
 
   function formatDaysLabel(diff) {
-    if (diff === null) return 'fără termen';
-    if (diff === 0) return 'azi';
+    if (diff === null) return "fără termen";
+    if (diff === 0) return "azi";
     if (diff > 0) return `în ${diff} zile`;
     return `acum ${Math.abs(diff)} zile`;
   }
@@ -775,9 +766,9 @@ async function deleteTask() {
     <Stack spacing={2}>
       {/* Form de adăugare + generare */}
       <Stack
-        direction={{ xs: 'column', sm: 'row' }}
+        direction={{ xs: "column", sm: "row" }}
         spacing={2}
-        alignItems={{ xs: 'stretch', sm: 'flex-end' }}
+        alignItems={{ xs: "stretch", sm: "flex-end" }}
       >
         <TextField
           label="Task nou"
@@ -809,29 +800,27 @@ async function deleteTask() {
       </Stack>
 
       {loading && (
-        <Box sx={{ p: 2, color: 'text.secondary' }}>
-          Se încarcă taskurile…
-        </Box>
+        <Box sx={{ p: 2, color: "text.secondary" }}>Se încarcă taskurile…</Box>
       )}
 
       {!loading && timelineItems.length === 0 && (
-        <Box sx={{ p: 2, color: 'text.secondary' }}>
+        <Box sx={{ p: 2, color: "text.secondary" }}>
           Fără taskuri încă. Poți genera un timeline sau adăuga manual.
         </Box>
       )}
 
       {/* TIMELINE VERTICAL */}
       {!loading && timelineItems.length > 0 && (
-        <Box sx={{ position: 'relative', mt: 2 }}>
+        <Box sx={{ position: "relative", mt: 2 }}>
           {/* linia centrală */}
           <Box
             sx={{
-              position: 'absolute',
-              left: '50%',
+              position: "absolute",
+              left: "50%",
               top: 0,
               bottom: 0,
               width: 2,
-              bgcolor: 'divider',
+              bgcolor: "divider",
             }}
           />
           <Stack spacing={4}>
@@ -841,42 +830,39 @@ async function deleteTask() {
               const daysLabel = formatDaysLabel(diff);
               const dateLabel = it.dueDate
                 ? new Date(it.dueDate).toLocaleString()
-                : 'fără dată';
+                : "fără dată";
 
-              const opacity =
-                it.status === 'DONE' ? 0.6 : 1;
+              const opacity = it.status === "DONE" ? 0.6 : 1;
 
               return (
                 <Box
                   key={it.id}
                   sx={{
-                    display: 'flex',
-                    justifyContent: isLeft
-                      ? 'flex-start'
-                      : 'flex-end',
+                    display: "flex",
+                    justifyContent: isLeft ? "flex-start" : "flex-end",
                   }}
                 >
                   <Tooltip title="Click pentru editare/stergere">
                     <Box
                       sx={{
-                        position: 'relative',
-                        maxWidth: { xs: '100%', md: '46%' },
-                        cursor: 'pointer',
+                        position: "relative",
+                        maxWidth: { xs: "100%", md: "46%" },
+                        cursor: "pointer",
                       }}
                       onClick={() => setEditingTask(it)}
                     >
                       {/* punct pe linia centrală */}
                       <Box
                         sx={{
-                          position: 'absolute',
+                          position: "absolute",
                           top: 18,
-                          [isLeft ? 'right' : 'left']: '-10px',
+                          [isLeft ? "right" : "left"]: "-10px",
                           width: 12,
                           height: 12,
-                          borderRadius: '50%',
-                          bgcolor: 'primary.main',
-                          border: '2px solid',
-                          borderColor: 'background.default',
+                          borderRadius: "50%",
+                          bgcolor: "primary.main",
+                          border: "2px solid",
+                          borderColor: "background.default",
                         }}
                       />
                       <Card
@@ -885,11 +871,7 @@ async function deleteTask() {
                           opacity,
                         }}
                       >
-                        <Stack
-                          direction="row"
-                          spacing={2}
-                          alignItems="center"
-                        >
+                        <Stack direction="row" spacing={2} alignItems="center">
                           <Chip
                             size="small"
                             label={daysLabel}
@@ -906,7 +888,7 @@ async function deleteTask() {
                             <Typography
                               variant="body2"
                               color="text.secondary"
-                              sx={{ fontSize: '0.75rem' }}
+                              sx={{ fontSize: "0.75rem" }}
                               noWrap
                             >
                               {dateLabel}
@@ -949,16 +931,10 @@ async function deleteTask() {
           </Stack>
         </DialogContent>
         <DialogActions>
-          <Button
-            color="error"
-            onClick={deleteTask}
-          >
+          <Button color="error" onClick={deleteTask}>
             Șterge
           </Button>
-          <Button
-            variant="contained"
-            onClick={saveEdit}
-          >
+          <Button variant="contained" onClick={saveEdit}>
             Salvează
           </Button>
         </DialogActions>
@@ -969,8 +945,8 @@ async function deleteTask() {
 
 function InvitationsTab({ eventId }) {
   const [items, setItems] = useState([]);
-  const [invitedId, setInvitedId] = useState('');
-  const [role, setRole] = useState('PROVIDER');
+  const [invitedId, setInvitedId] = useState("");
+  const [role, setRole] = useState("PROVIDER");
   async function load() {
     const r = await fetch(`/api/events/${eventId}/invitations`);
     const d = await r.json();
@@ -978,50 +954,71 @@ function InvitationsTab({ eventId }) {
   }
   async function invite() {
     if (!invitedId.trim()) return;
-    await fetch(`/api/events/${eventId}/invitations`, { method:'POST', headers:{'content-type':'application/json'}, body: JSON.stringify({ invitedId: invitedId.trim(), role })});
-    setInvitedId(''); await load();
+    await fetch(`/api/events/${eventId}/invitations`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ invitedId: invitedId.trim(), role }),
+    });
+    setInvitedId("");
+    await load();
   }
-  useEffect(()=>{ load(); }, [eventId]);
+  useEffect(() => {
+    load();
+  }, [eventId]);
   return (
     <Stack spacing={2}>
       <Stack direction="row" spacing={2}>
-        <TextField label="User ID provider" value={invitedId} onChange={e=>setInvitedId(e.target.value)} />
-        <TextField label="Rol" value={role} onChange={e=>setRole(e.target.value)} />
-        <Button variant="contained" onClick={invite}>Invită</Button>
+        <TextField
+          label="User ID provider"
+          value={invitedId}
+          onChange={(e) => setInvitedId(e.target.value)}
+        />
+        <TextField
+          label="Rol"
+          value={role}
+          onChange={(e) => setRole(e.target.value)}
+        />
+        <Button variant="contained" onClick={invite}>
+          Invită
+        </Button>
       </Stack>
-      {items.map(inv=>(
-        <Card key={inv.id} sx={{ p:1 }}>
-          <Stack direction="row" alignItems="center" justifyContent="space-between">
-            <Typography>{inv.invitedId} • {inv.role}</Typography>
+      {items.map((inv) => (
+        <Card key={inv.id} sx={{ p: 1 }}>
+          <Stack
+            direction="row"
+            alignItems="center"
+            justifyContent="space-between"
+          >
+            <Typography>
+              {inv.invitedId} • {inv.role}
+            </Typography>
             <Chip label={inv.status} />
           </Stack>
         </Card>
       ))}
-      {!items.length && <Box sx={{ p:2, color:'text.secondary' }}>Fără invitații.</Box>}
+      {!items.length && (
+        <Box sx={{ p: 2, color: "text.secondary" }}>Fără invitații.</Box>
+      )}
     </Stack>
   );
 }
 
 function MessagesTab({ eventId }) {
   const [items, setItems] = useState([]);
-  const [body, setBody] = useState('');
+  const [body, setBody] = useState("");
 
   async function load() {
     try {
       const r = await fetch(`/api/events/${eventId}/messages`, {
-        cache: 'no-store',
+        cache: "no-store",
       });
       if (!r.ok) {
-        console.error('Failed messages load', await r.text());
+        console.error("Failed messages load", await r.text());
         setItems([]);
         return;
       }
       const d = await r.json();
-      const list = Array.isArray(d)
-        ? d
-        : Array.isArray(d?.rows)
-        ? d.rows
-        : [];
+      const list = Array.isArray(d) ? d : Array.isArray(d?.rows) ? d.rows : [];
       setItems(list);
     } catch (e) {
       console.error(e);
@@ -1032,11 +1029,11 @@ function MessagesTab({ eventId }) {
   async function post() {
     if (!body.trim()) return;
     await fetch(`/api/events/${eventId}/messages`, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
+      method: "POST",
+      headers: { "content-type": "application/json" },
       body: JSON.stringify({ body }),
     });
-    setBody('');
+    setBody("");
     await load();
   }
 
@@ -1061,14 +1058,14 @@ function MessagesTab({ eventId }) {
       {items.map((m) => (
         <Card key={m.id} sx={{ p: 1 }}>
           <Typography variant="body2" color="text.secondary">
-            {m.createdAt ? new Date(m.createdAt).toLocaleString() : ''}
+            {m.createdAt ? new Date(m.createdAt).toLocaleString() : ""}
           </Typography>
           <Typography>{m.body}</Typography>
         </Card>
       ))}
 
       {!items.length && (
-        <Box sx={{ p: 2, color: 'text.secondary' }}>Fără mesaje.</Box>
+        <Box sx={{ p: 2, color: "text.secondary" }}>Fără mesaje.</Box>
       )}
     </Stack>
   );
@@ -1083,105 +1080,226 @@ function FilesTab({ eventId }) {
     const d = await r.json();
     setList(d || []);
   }
-  useEffect(()=>{ load(); }, [eventId]);
+  useEffect(() => {
+    load();
+  }, [eventId]);
 
   async function upload() {
     if (!file) return;
-    const body = { name: file.name, url: `/uploads/${file.name}`, mime: file.type, size: file.size }; // MVP: metadate; integrarea upload-ului real o faci în files-service
-    await fetch(`/api/events/${eventId}/attachments`, { method:'POST', headers:{'content-type':'application/json'}, body: JSON.stringify(body) });
-    setFile(null); await load();
+    const body = {
+      name: file.name,
+      url: `/uploads/${file.name}`,
+      mime: file.type,
+      size: file.size,
+    }; // MVP: metadate; integrarea upload-ului real o faci în files-service
+    await fetch(`/api/events/${eventId}/attachments`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    setFile(null);
+    await load();
   }
 
   return (
     <Stack spacing={2}>
       <Stack direction="row" spacing={2}>
-        <input type="file" onChange={e=>setFile(e.target.files?.[0] || null)} />
-        <Button variant="contained" onClick={upload} disabled={!file}>Încarcă</Button>
+        <input
+          type="file"
+          onChange={(e) => setFile(e.target.files?.[0] || null)}
+        />
+        <Button variant="contained" onClick={upload} disabled={!file}>
+          Încarcă
+        </Button>
       </Stack>
-      {list.map(a=>(
-        <Card key={a.id} sx={{ p:1 }}>
-          <Typography>{a.name} • {a.mime || '-'} • {a.size ? `${a.size}B` : ''}</Typography>
+      {list.map((a) => (
+        <Card key={a.id} sx={{ p: 1 }}>
+          <Typography>
+            {a.name} • {a.mime || "-"} • {a.size ? `${a.size}B` : ""}
+          </Typography>
         </Card>
       ))}
-      {!list.length && <Box sx={{ p:2, color:'text.secondary' }}>Fără fișiere.</Box>}
+      {!list.length && (
+        <Box sx={{ p: 2, color: "text.secondary" }}>Fără fișiere.</Box>
+      )}
     </Stack>
   );
 }
 
 function OffersTab({ eventId, role }) {
   const [list, setList] = useState([]);
-  const [editing, setEditing] = useState({ startsAt:'', endsAt:'', totalCost:'', currency:'RON', notes:'' });
+  const [editing, setEditing] = useState({
+    startsAt: "",
+    endsAt: "",
+    totalCost: "",
+    currency: "RON",
+    notes: "",
+  });
 
   async function load() {
     const r = await fetch(`/api/events/${eventId}/offers`);
     const d = await r.json();
     setList(d || []);
   }
-  useEffect(()=>{ load(); }, [eventId]);
+  useEffect(() => {
+    load();
+  }, [eventId]);
 
   async function saveOffer() {
     const payload = {
-      startsAt: editing.startsAt ? new Date(editing.startsAt).toISOString() : null,
+      startsAt: editing.startsAt
+        ? new Date(editing.startsAt).toISOString()
+        : null,
       endsAt: editing.endsAt ? new Date(editing.endsAt).toISOString() : null,
       totalCost: editing.totalCost ? Number(editing.totalCost) : null,
       currency: editing.currency,
-      notes: editing.notes || null
+      notes: editing.notes || null,
     };
-    await fetch(`/api/events/${eventId}/offers`, { method:'POST', headers:{'content-type':'application/json'}, body: JSON.stringify(payload) });
-    setEditing({ startsAt:'', endsAt:'', totalCost:'', currency:'RON', notes:'' });
+    await fetch(`/api/events/${eventId}/offers`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    setEditing({
+      startsAt: "",
+      endsAt: "",
+      totalCost: "",
+      currency: "RON",
+      notes: "",
+    });
     await load();
   }
 
   async function setStatus(offerId, status) {
-    await fetch(`/api/events/${eventId}/offers/${offerId}`, { method:'PATCH', headers:{'content-type':'application/json'}, body: JSON.stringify({ status })});
+    await fetch(`/api/events/${eventId}/offers/${offerId}`, {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ status }),
+    });
     await load();
   }
 
   return (
     <Stack spacing={2}>
-      {role === 'provider' && (
-        <Card><CardContent>
-          <Typography variant="subtitle1" sx={{ mb:1 }}>Propune ofertă</Typography>
-          <Stack direction="row" spacing={2} flexWrap="wrap">
-            <TextField type="datetime-local" label="Start" value={editing.startsAt} onChange={e=>setEditing(s=>({...s, startsAt:e.target.value}))} />
-            <TextField type="datetime-local" label="Sfârșit" value={editing.endsAt} onChange={e=>setEditing(s=>({...s, endsAt:e.target.value}))} />
-            <TextField label="Cost total" value={editing.totalCost} onChange={e=>setEditing(s=>({...s, totalCost:e.target.value}))} />
-            <TextField label="Valută" value={editing.currency} onChange={e=>setEditing(s=>({...s, currency:e.target.value}))} />
-            <TextField label="Note" value={editing.notes} onChange={e=>setEditing(s=>({...s, notes:e.target.value}))} />
-            <Button variant="contained" onClick={saveOffer}>Trimite</Button>
-          </Stack>
-        </CardContent></Card>
+      {role === "provider" && (
+        <Card>
+          <CardContent>
+            <Typography variant="subtitle1" sx={{ mb: 1 }}>
+              Propune ofertă
+            </Typography>
+            <Stack direction="row" spacing={2} flexWrap="wrap">
+              <TextField
+                type="datetime-local"
+                label="Start"
+                value={editing.startsAt}
+                onChange={(e) =>
+                  setEditing((s) => ({ ...s, startsAt: e.target.value }))
+                }
+              />
+              <TextField
+                type="datetime-local"
+                label="Sfârșit"
+                value={editing.endsAt}
+                onChange={(e) =>
+                  setEditing((s) => ({ ...s, endsAt: e.target.value }))
+                }
+              />
+              <TextField
+                label="Cost total"
+                value={editing.totalCost}
+                onChange={(e) =>
+                  setEditing((s) => ({ ...s, totalCost: e.target.value }))
+                }
+              />
+              <TextField
+                label="Valută"
+                value={editing.currency}
+                onChange={(e) =>
+                  setEditing((s) => ({ ...s, currency: e.target.value }))
+                }
+              />
+              <TextField
+                label="Note"
+                value={editing.notes}
+                onChange={(e) =>
+                  setEditing((s) => ({ ...s, notes: e.target.value }))
+                }
+              />
+              <Button variant="contained" onClick={saveOffer}>
+                Trimite
+              </Button>
+            </Stack>
+          </CardContent>
+        </Card>
       )}
 
-      {list.map(o=>(
-        <Card key={o.id}><CardContent>
-          <Stack direction="row" justifyContent="space-between" alignItems="center">
-            <Stack spacing={0.5}>
-              <Typography variant="subtitle1">{o.totalCost ? `${o.totalCost} ${o.currency || 'RON'}` : 'fără preț'}</Typography>
-              <Typography variant="body2" color="text.secondary">
-                {o.startsAt ? new Date(o.startsAt).toLocaleString() : '-'} → {o.endsAt ? new Date(o.endsAt).toLocaleString() : '-'}
-              </Typography>
-              {o.notes && <Typography variant="body2">{o.notes}</Typography>}
+      {list.map((o) => (
+        <Card key={o.id}>
+          <CardContent>
+            <Stack
+              direction="row"
+              justifyContent="space-between"
+              alignItems="center"
+            >
+              <Stack spacing={0.5}>
+                <Typography variant="subtitle1">
+                  {o.totalCost
+                    ? `${o.totalCost} ${o.currency || "RON"}`
+                    : "fără preț"}
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  {o.startsAt ? new Date(o.startsAt).toLocaleString() : "-"} →{" "}
+                  {o.endsAt ? new Date(o.endsAt).toLocaleString() : "-"}
+                </Typography>
+                {o.notes && <Typography variant="body2">{o.notes}</Typography>}
+              </Stack>
+              <Stack direction="row" spacing={1}>
+                <Chip label={o.status} />
+                {role === "provider" &&
+                  (o.status === "DRAFT" || o.status === "SENT") && (
+                    <>
+                      {o.status === "DRAFT" && (
+                        <Button
+                          size="small"
+                          onClick={() => setStatus(o.id, "SENT")}
+                        >
+                          Trimite
+                        </Button>
+                      )}
+                      <Button
+                        size="small"
+                        onClick={() => setStatus(o.id, "WITHDRAWN")}
+                      >
+                        Retrage
+                      </Button>
+                    </>
+                  )}
+                {role === "client" && o.status === "SENT" && (
+                  <>
+                    <Button
+                      size="small"
+                      color="success"
+                      onClick={() => setStatus(o.id, "ACCEPTED")}
+                    >
+                      Acceptă
+                    </Button>
+                    <Button
+                      size="small"
+                      color="error"
+                      onClick={() => setStatus(o.id, "REJECTED")}
+                    >
+                      Respinge
+                    </Button>
+                  </>
+                )}
+              </Stack>
             </Stack>
-            <Stack direction="row" spacing={1}>
-              <Chip label={o.status} />
-              {role === 'provider' && (o.status === 'DRAFT' || o.status === 'SENT') && (
-                <>
-                  {o.status === 'DRAFT' && <Button size="small" onClick={()=>setStatus(o.id,'SENT')}>Trimite</Button>}
-                  <Button size="small" onClick={()=>setStatus(o.id,'WITHDRAWN')}>Retrage</Button>
-                </>
-              )}
-              {role === 'client' && o.status === 'SENT' && (
-                <>
-                  <Button size="small" color="success" onClick={()=>setStatus(o.id,'ACCEPTED')}>Acceptă</Button>
-                  <Button size="small" color="error" onClick={()=>setStatus(o.id,'REJECTED')}>Respinge</Button>
-                </>
-              )}
-            </Stack>
-          </Stack>
-        </CardContent></Card>
+          </CardContent>
+        </Card>
       ))}
-      {!list.length && <Box sx={{ p:2, color:'text.secondary' }}>Nu există oferte încă.</Box>}
+      {!list.length && (
+        <Box sx={{ p: 2, color: "text.secondary" }}>Nu există oferte încă.</Box>
+      )}
     </Stack>
   );
 }

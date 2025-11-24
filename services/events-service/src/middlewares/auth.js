@@ -9,7 +9,7 @@ export function verifyAuthFactory({ prisma }) {
   const AUTH_URL = process.env.AUTH_URL?.replace(/\/$/, '');
 
   return async function verifyAuth(req) {
-    console.log('auth_url', AUTH_URL )
+    
     if (!AUTH_URL) {
       console.log('in auth_url, so true')
       // fallback: în lipsă de auth-service, tratăm ca „client”
@@ -23,7 +23,7 @@ export function verifyAuthFactory({ prisma }) {
     let bearer = null;
     if (authHeader && authHeader.toLowerCase().startsWith('bearer ')) {
       bearer = authHeader;
-    } else if (cookieHeader.includes('evt_jwt') || cookieHeader.includes('evt_token')) {
+    } else if (cookieHeader.includes('evt_jwt') || cookieHeader.includes('evt_token')|| cookieHeader.includes('evt_session')) {
       const match = cookieHeader.match(/(evt_jwt|evt_token)=([^;]+)/);
       if (match) bearer = `Bearer ${match[2]}`;
     }

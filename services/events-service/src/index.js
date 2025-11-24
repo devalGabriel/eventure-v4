@@ -16,6 +16,9 @@ import { messagesRoutes } from './routes/messages.js';
 import { attachmentsRoutes } from './routes/attachments.js';
 import { programsRoutes } from './routes/programs.js';
 import { groupsRoutes } from './routes/groups.js';
+import { eventTemplatesRoutes } from './routes/eventTemplates.js';
+import { eventTypesRoutes } from './routes/eventTypes.js';
+import { eventBriefBudgetRoutes } from './routes/eventBriefBudget.js';
 
 // auth util
 import { verifyAuthFactory } from './middlewares/auth.js';
@@ -67,6 +70,9 @@ if (messagesRoutes) messagesRoutes(app);
 if (attachmentsRoutes) attachmentsRoutes(app);
 if (programsRoutes) programsRoutes(app);
 if (groupsRoutes) groupsRoutes(app);
+if (eventTemplatesRoutes) eventTemplatesRoutes(app);
+if (eventBriefBudgetRoutes) eventBriefBudgetRoutes(app);
+if (eventTypesRoutes) eventTypesRoutes(app);
 
 // health
 app.get('/health', (_req, res) => res.json({ ok: true }));

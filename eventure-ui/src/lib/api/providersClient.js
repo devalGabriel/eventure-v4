@@ -226,7 +226,7 @@ export async function adminListProviders(params = {}) {
 
   const query = search.toString();
   const url = `${API_BASE}/admin${query ? `?${query}` : ""}`;
-console.log("query: ", query)
+
   const res = await fetch(url, {
     method: "GET",
     credentials: "include",

@@ -33,7 +33,9 @@ const NAV_BY_ROLE = {
       section: "General",
       items: [
         { label: "Dashboard", href: "/dashboard" },
-        { label: "Events", href: "/admin/events" },
+        { label: "Events", href: "/dashboard/admin/events" },
+        { label: "Event Templates", href: "/dashboard/admin/event-templates" },
+        { label: "Brief Templates", href: "/dashboard/admin/events/brief-templates" },
       ],
     },
     {
@@ -64,7 +66,7 @@ const NAV_BY_ROLE = {
     { section: "General", items: [{ label: "Dashboard", href: "/dashboard" }] },
     {
       section: "Evenimente",
-      items: [{ label: "Evenimente", href: "/events" }],
+      items: [{ label: "Evenimente", href: "/events" },{ label: "Oferte", href: "/dashboard/client/offers" }],
     },
     {
       section: "Devino furnizor",

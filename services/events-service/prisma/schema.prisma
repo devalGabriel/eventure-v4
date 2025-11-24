@@ -155,6 +155,10 @@ model EventTypeTemplate {
   name        String
   description String?
   taskJson    Json
+
+  briefJson   Json?
+  budgetJson  Json?
+
   createdAt   DateTime @default(now())
 
   @@unique([type, name], name: "type_name")

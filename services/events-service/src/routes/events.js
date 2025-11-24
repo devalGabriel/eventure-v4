@@ -31,9 +31,186 @@ function makeReply(res) {
   return f;
 }
 
+function getCanonicalUserId(user) {
+  // UserProfile.id (UUID) – setat în token ca `id`
+  return (user?.id ?? '').toString();
+}
 
 export async function eventsRoutes(app) {
-  app.post('/events', async (req, res) => {
+  // LISTARE
+app.get('/events', async (req, res) => {
+  const reply = makeReply(res);
+  const user = await app.verifyAuth(req);
+  const rawUserId = (user?.userId ?? user?.id ?? '').toString() || null;
+
+  const page = Math.max(1, Number(req.query.page || 1));
+  const pageSize = Math.min(100, Math.max(1, Number(req.query.pageSize || 20)));
+
+  const all = String(req.query.all || '').toLowerCase() === 'true';
+  const owner = String(req.query.owner || '').toLowerCase(); // 'me' sau ''
+
+  // --- filtre opționale ---
+  const statusRaw = req.query.status;
+  const typeRaw = req.query.type;
+  const qRaw = req.query.q;
+  const clientIdRaw = req.query.clientId;
+  const dateFromRaw = req.query.dateFrom;
+  const dateToRaw = req.query.dateTo;
+
+  // status: poate fi unic sau listă separată prin virgule
+  let statusFilter = null;
+  if (statusRaw) {
+    const arr = String(statusRaw)
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean);
+    if (arr.length === 1) statusFilter = arr[0];
+    else if (arr.length > 1) statusFilter = { in: arr };
+  }
+
+  // type: la fel ca status
+  let typeFilter = null;
+  if (typeRaw) {
+    const arr = String(typeRaw)
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean);
+    if (arr.length === 1) typeFilter = arr[0];
+    else if (arr.length > 1) typeFilter = { in: arr };
+  }
+
+  const qFilter = qRaw ? String(qRaw).trim() : null;
+  const clientIdFilter = clientIdRaw ? String(clientIdRaw).trim() : null;
+
+  let dateFilter = null;
+  if (dateFromRaw || dateToRaw) {
+    dateFilter = {};
+    if (dateFromRaw) {
+      const d = new Date(String(dateFromRaw));
+      if (!Number.isNaN(d.getTime())) dateFilter.gte = d;
+    }
+    if (dateToRaw) {
+      const d = new Date(String(dateToRaw));
+      if (!Number.isNaN(d.getTime())) dateFilter.lte = d;
+    }
+    if (!dateFilter.gte && !dateFilter.lte) {
+      dateFilter = null;
+    }
+  }
+
+  // helper: construim un obiect cu filtrele comune
+  function buildFilters() {
+    const and = [];
+
+    if (statusFilter) {
+      and.push({ status: statusFilter });
+    }
+
+    if (typeFilter) {
+      and.push({ type: typeFilter });
+    }
+
+    if (qFilter) {
+      and.push({
+        name: { contains: qFilter, mode: 'insensitive' },
+      });
+    }
+
+    if (dateFilter) {
+      and.push({ date: dateFilter });
+    }
+
+    return and;
+  }
+
+  // --- ADMIN: all=true ---
+  if (all) {
+    if (user?.role !== 'admin') {
+      return res.status(403).json({ error: 'Forbidden' });
+    }
+
+    const andFilters = buildFilters();
+
+    if (clientIdFilter) {
+      andFilters.push({ clientId: clientIdFilter });
+    }
+
+    const where = andFilters.length ? { AND: andFilters } : {};
+
+    const [rows, total] = await Promise.all([
+      prisma.event.findMany({
+        where,
+        orderBy: { createdAt: 'desc' },
+        skip: (page - 1) * pageSize,
+        take: pageSize,
+      }),
+      prisma.event.count({ where }),
+    ]);
+
+    return reply.send({ rows, total, page, pageSize });
+  }
+
+  // --- owner=me -> necesită autentificare ---
+  if (owner === 'me') {
+    if (!rawUserId) {
+      return res.status(401).json({ error: 'Unauthenticated' });
+    }
+
+    const baseOr = [
+      { clientId: rawUserId }, // evenimente create de mine
+      { participants: { some: { userId: rawUserId } } }, // unde sunt participant
+    ];
+
+    const andFilters = buildFilters();
+    const where =
+      andFilters.length > 0
+        ? { AND: [{ OR: baseOr }, ...andFilters] }
+        : { OR: baseOr };
+
+    const [rows, total] = await Promise.all([
+      prisma.event.findMany({
+        where,
+        orderBy: { createdAt: 'desc' },
+        skip: (page - 1) * pageSize,
+        take: pageSize,
+      }),
+      prisma.event.count({ where }),
+    ]);
+
+    return reply.send({ rows, total, page, pageSize });
+  }
+
+  // --- fallback: user autenticat, dar fără all/owner ---
+  if (!rawUserId) {
+    // fără user → nimic (sau 401 – momentan lăsăm gol)
+    return res.status(200).json({ rows: [], total: 0, page, pageSize });
+  }
+
+  const baseOr = [
+    { clientId: rawUserId },
+    { participants: { some: { userId: rawUserId } } },
+  ];
+
+  const andFilters = buildFilters();
+  const where =
+    andFilters.length > 0
+      ? { AND: [{ OR: baseOr }, ...andFilters] }
+      : { OR: baseOr };
+
+  const [rows, total] = await Promise.all([
+    prisma.event.findMany({
+      where,
+      orderBy: { createdAt: 'desc' },
+      skip: (page - 1) * pageSize,
+      take: pageSize,
+    }),
+    prisma.event.count({ where }),
+  ]);
+
+  return reply.send({ rows, total, page, pageSize });
+});
+
+app.post('/events', async (req, res) => {
     const reply = makeReply(res);
     const user = await app.verifyAuth(req);
 
@@ -100,7 +277,6 @@ export async function eventsRoutes(app) {
         .json({ error: 'Failed to create event' });
     }
   });
-
     // --- TASKS: POST /events/:id/tasks ---
   app.post('/events/:id/tasks', async (req, res) => {
     const reply = makeReply(res);
@@ -363,10 +539,10 @@ export async function eventsRoutes(app) {
     if (!e) throw NotFound('Event not found');
 
     if (user?.role !== 'admin') {
-      const userId = String(user?.userId ?? user?.id ?? '');
-      if (!userId) {
-        return res.status(401).json({ error: 'Unauthenticated' });
-      }
+const userId = getCanonicalUserId(user);
+if (!userId) {
+  return res.status(401).json({ error: 'Unauthenticated' });
+}
 
       const isOwner = e.clientId === userId;
       const isParticipant = e.participants?.some?.(
@@ -380,7 +556,6 @@ export async function eventsRoutes(app) {
 
     return reply.send(e);
   });
-
 
     // returnează statusul curent + lista de statusuri permise
   app.get('/events/:id/status', async (req, res) => {

@@ -63,7 +63,7 @@ export async function forwardUsersResponse(res) {
   const contentType = res.headers.get("content-type") || "";
   const status = res.status;
   const text = await res.text();
-
+  
   if (contentType.includes("application/json")) {
     try {
       const data = text ? JSON.parse(text) : null;
