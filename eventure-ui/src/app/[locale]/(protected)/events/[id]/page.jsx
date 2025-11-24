@@ -22,11 +22,12 @@ import {
 } from "@mui/material";
 import SaveIcon from "@mui/icons-material/Save";
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, usePathname } from "next/navigation";
 import { getRoleServer } from "@/lib/utils";
 import { useNotify } from "@/components/providers/NotificationProvider";
 import BudgetEstimatePanel from "@/components/events/BudgetEstimatePanel";
 import BriefTemplatePanel from "@/components/events/BriefTemplatePanel";
+import { extractLocaleAndPath } from "@/lib/extractLocaleAndPath";
 
 const statusOptions = ["DRAFT", "PLANNING", "ACTIVE", "COMPLETED", "CANCELED"];
 const taskStatusColor = (s) =>
@@ -192,7 +193,8 @@ function OverviewTab({ event, onSaved }) {
   const [date, setDate] = useState(""); // string pentru <input type="datetime-local">
   const [availableStatuses, setAvailableStatuses] = useState([]);
   const { notify } = useNotify();
-
+const pathname = usePathname();
+const { locale } = extractLocaleAndPath(pathname);
   // sincronizează state-ul cu event, inclusiv data
   useEffect(() => {
     setName(event.name || "");
@@ -252,7 +254,13 @@ function OverviewTab({ event, onSaved }) {
             value={name}
             onChange={(e) => setName(e.target.value)}
           />
-
+<Button
+  component={Link}
+  href={`/${locale}/dashboard/client/offers?eventId=${event.id}&eventType=${event.type || ""}&guests=${event.guestCount || ""}&maxBudget=${event.budgetPlanned || ""}`}
+  variant="contained"
+>
+  Caută oferte pentru acest eveniment
+</Button>
           <Select
             label="Status"
             value={status}

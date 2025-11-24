@@ -27,19 +27,16 @@ import PersonIcon from "@mui/icons-material/Person";
 import { usePathname, useSearchParams } from "next/navigation";
 import { extractLocaleAndPath } from "@/lib/extractLocaleAndPath";
 
-// Tipuri de eveniment – pentru UX (filtru local)
 const EVENT_TYPES = [
   { value: "wedding", label: "Nuntă" },
   { value: "baptism", label: "Botez" },
   { value: "corporate", label: "Corporate" },
 ];
 
-// Categoriile sunt "logice" (nu sunt încă legate 100% de DB)
-// Le folosim la filtrare locală pe baza label-ului/cheii
 const PROVIDER_CATEGORIES = [
   { value: "", label: "Toate categoriile" },
   { value: "venue", label: "Locații" },
-  { value: "music", label: "Muzică / DJ / Formație" },
+  { value: "music", label: "Muzică / DJ / Formatie" },
   { value: "photo_video", label: "Foto / Video" },
   { value: "decor", label: "Decorațiuni & Flori" },
   { value: "catering", label: "Catering" },
@@ -52,7 +49,7 @@ export default function ClientOffersPage() {
 
   const [items, setItems] = useState([]);
   const [total, setTotal] = useState(0);
-  const [page, setPage] = useState(1); // 1-based pentru Pagination
+  const [page, setPage] = useState(1); // 1-based
   const [pageSize, setPageSize] = useState(12);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -66,11 +63,29 @@ export default function ClientOffersPage() {
   const [budgetMax, setBudgetMax] = useState("");
   const [onlyGroups, setOnlyGroups] = useState(false);
 
-  // preload eventType din query (ex: ?eventType=wedding)
+  // Context de eveniment (venim dintr-un event concret)
+  const [eventId, setEventId] = useState(null);
+  const [eventGuests, setEventGuests] = useState(null);
+  const [eventBudget, setEventBudget] = useState(null);
+
+  // preload din query (?eventType=&eventId=&guests=&budget=)
   useEffect(() => {
     const et = searchParams.get("eventType");
-    if (et && !eventType) {
-      setEventType(et);
+    const eid = searchParams.get("eventId");
+    const guests = searchParams.get("guests");
+    const budget = searchParams.get("budget");
+
+    if (et && !eventType) setEventType(et);
+    if (eid && !eventId) setEventId(eid);
+
+    if (guests && eventGuests == null) {
+      const n = Number(guests);
+      setEventGuests(Number.isNaN(n) ? null : n);
+    }
+
+    if (budget && eventBudget == null) {
+      const n = Number(budget);
+      setEventBudget(Number.isNaN(n) ? null : n);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams]);
@@ -83,12 +98,23 @@ export default function ClientOffersPage() {
       params.set("page", String(page));
       params.set("pageSize", String(pageSize));
 
-      // deocamdată eventType & category sunt filtrate local în UI;
-      // le putem trimite la backend când avem mapping direct în Prisma.
+      if (eventType) params.set("eventType", eventType);
       if (location.trim()) params.set("location", location.trim());
       if (budgetMin) params.set("budgetMin", budgetMin);
       if (budgetMax) params.set("budgetMax", budgetMax);
       if (onlyGroups) params.set("onlyGroups", "true");
+
+      // context eveniment pentru scoring în backend
+      if (eventGuests != null && !Number.isNaN(eventGuests)) {
+        params.set("eventGuests", String(eventGuests));
+      }
+      if (eventBudget != null && !Number.isNaN(eventBudget)) {
+        params.set("eventBudget", String(eventBudget));
+      }
+      if (eventId) {
+        // util pe viitor, chiar dacă acum providers-service nu folosește încă eventId
+        params.set("eventId", eventId);
+      }
 
       const r = await fetch(`/api/client/packages?${params.toString()}`, {
         cache: "no-store",
@@ -115,96 +141,41 @@ export default function ClientOffersPage() {
   useEffect(() => {
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [page, pageSize, location, budgetMin, budgetMax, onlyGroups]);
+  }, [
+    page,
+    pageSize,
+    eventType,
+    location,
+    budgetMin,
+    budgetMax,
+    onlyGroups,
+    eventGuests,
+    eventBudget,
+  ]);
 
-  // === FILTRARE LOCALĂ (pe lista deja încărcată) ===
-  // filtru local suplimentar: text + tip eveniment + categorie
+  // filtru local suplimentar după text + categorie (frontend only)
   const visibleItems = useMemo(() => {
     const term = q.trim().toLowerCase();
-    const et = eventType.trim().toLowerCase();
-    const cat = category.trim().toLowerCase();
+    const cat = category;
 
     return items.filter((p) => {
       const name = (p.name || "").toLowerCase();
       const desc = (p.shortDescription || p.description || "").toLowerCase();
-      const city = (p.city || "").toLowerCase();
-      const tagsStr = Array.isArray(p.tags)
-        ? p.tags.join(" ").toLowerCase()
-        : "";
-      const categoryLabel = (p.categoryLabel || p.category || "").toLowerCase();
+      const city = (p.city || p.providerProfile?.city || "").toLowerCase();
+      const label = (p.categoryLabel || "").toLowerCase();
 
-      // 1) căutare text liber
-      let textMatch = true;
-      if (term) {
-        textMatch =
-          name.includes(term) ||
-          desc.includes(term) ||
-          city.includes(term);
-      }
+      const matchesText =
+        !term || name.includes(term) || desc.includes(term) || city.includes(term);
 
-      // 2) tip eveniment – heuristici pe text (nu atingem schema)
-      let eventMatch = true;
-      if (et) {
-        const haystack = `${name} ${desc} ${tagsStr}`;
-        if (et === "wedding") {
-          eventMatch =
-            haystack.includes("nunt") ||
-            haystack.includes("wedding") ||
-            haystack.includes("bride");
-        } else if (et === "baptism") {
-          eventMatch =
-            haystack.includes("botez") ||
-            haystack.includes("baptism") ||
-            haystack.includes("christening");
-        } else if (et === "corporate") {
-          eventMatch =
-            haystack.includes("corporate") ||
-            haystack.includes("teambuilding") ||
-            haystack.includes("team building") ||
-            haystack.includes("business");
-        }
-      }
+      const matchesCategory =
+        !cat ||
+        // dacă backend va adăuga un field normalizat (ex: categoryKey), îl folosim
+        p.categoryKey === cat ||
+        label.includes(cat.replace("_", " "));
 
-      // 3) categorie – heuristici după categoryLabel + tags
-      let catMatch = true;
-      if (cat) {
-        const catHaystack = `${categoryLabel} ${tagsStr}`;
-
-        if (cat === "venue") {
-          catMatch =
-            catHaystack.includes("loca") ||
-            catHaystack.includes("venue") ||
-            catHaystack.includes("restaurant") ||
-            catHaystack.includes("sală") ||
-            catHaystack.includes("sala");
-        } else if (cat === "music") {
-          catMatch =
-            catHaystack.includes("dj") ||
-            catHaystack.includes("muzic") ||
-            catHaystack.includes("forma") ||
-            catHaystack.includes("band");
-        } else if (cat === "photo_video") {
-          catMatch =
-            catHaystack.includes("foto") ||
-            catHaystack.includes("photo") ||
-            catHaystack.includes("video");
-        } else if (cat === "decor") {
-          catMatch =
-            catHaystack.includes("decor") ||
-            catHaystack.includes("flori") ||
-            catHaystack.includes("flowers");
-        } else if (cat === "catering") {
-          catMatch =
-            catHaystack.includes("catering") ||
-            catHaystack.includes("meni") ||
-            catHaystack.includes("food");
-        }
-      }
-
-      return textMatch && eventMatch && catMatch;
+      return matchesText && matchesCategory;
     });
-  }, [items, q, eventType, category]);
-
+  }, [items, q, category]);
 
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
 
@@ -224,6 +195,18 @@ export default function ClientOffersPage() {
             Alege tipul de eveniment și filtrează furnizorii în funcție de categorie,
             buget și locație. Vezi rapid cine ți se potrivește.
           </Typography>
+
+          {eventId && (
+            <Typography
+              variant="caption"
+              color="text.secondary"
+              sx={{ display: "block", mt: 0.5 }}
+            >
+              Context eveniment: invitați{" "}
+              {eventGuests != null ? eventGuests : "nedefinit"} · buget{" "}
+              {eventBudget != null ? `${eventBudget} RON` : "nedefinit"}
+            </Typography>
+          )}
         </Box>
 
         <IconButton onClick={() => load()} disabled={loading}>
@@ -355,6 +338,9 @@ export default function ClientOffersPage() {
                 setBudgetMin("");
                 setBudgetMax("");
                 setOnlyGroups(false);
+                setEventGuests(null);
+                setEventBudget(null);
+                setEventId(null);
                 setPage(1);
               }}
             >
@@ -390,10 +376,10 @@ export default function ClientOffersPage() {
           <Grid container spacing={2}>
             {visibleItems.map((p) => {
               const priceLabel =
-                p.minPrice && p.currency
-                  ? `De la ${p.minPrice} ${p.currency}`
-                  : p.minPrice
-                  ? `De la ${p.minPrice}`
+                p.basePrice && p.currency
+                  ? `De la ${p.basePrice} ${p.currency}`
+                  : p.basePrice
+                  ? `De la ${p.basePrice}`
                   : "Preț la cerere";
 
               const categoryLabel = p.categoryLabel || "Furnizor";
@@ -484,6 +470,7 @@ export default function ClientOffersPage() {
                           spacing={0.5}
                           flexWrap="wrap"
                           rowGap={0.5}
+                          sx={{ mb: 1 }}
                         >
                           {p.tags.slice(0, 4).map((tag) => (
                             <Chip
@@ -494,6 +481,14 @@ export default function ClientOffersPage() {
                             />
                           ))}
                         </Stack>
+                      )}
+
+                      {typeof p.score === "number" && p.score > 0 && (
+                        <Chip
+                          size="small"
+                          color="primary"
+                          label="Recomandat pentru evenimentul tău"
+                        />
                       )}
                     </CardContent>
 
