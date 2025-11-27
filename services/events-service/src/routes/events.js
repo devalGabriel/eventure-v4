@@ -264,7 +264,7 @@ app.post('/events', async (req, res) => {
           notes: notes || null,
           currency: currency || undefined, // lasă default RON dacă nu vine nimic
           budgetPlanned:
-            parsedBudget != null ? parsedBudget : undefined,
+          parsedBudget != null ? parsedBudget : undefined,
           status: 'DRAFT',
         },
       });
@@ -533,6 +533,7 @@ app.post('/events', async (req, res) => {
       where: { id },
       include: {
         participants: true,
+        assignments: true,
       },
     });
 
@@ -613,7 +614,7 @@ if (!userId) {
 
   // STATS pentru ADMIN (pt. cardul din dashboard)
   app.get('/admin/events/stats', async (req, res) => {
-    console.log('Received request for /admin/events/stats');
+
     const reply = makeReply(res);
     const user = await app.verifyAuth(req);
 
@@ -760,59 +761,84 @@ if (!userId) {
     });
   });
 
-    // --- NEEDS: PUT /events/:id/needs ---
-  app.put('/events/:id/needs', async (req, res) => {
-    const reply = makeReply(res);
-    const user = await app.verifyAuth(req);
-    const { id } = req.params;
+ // --- NEEDS: PUT /events/:id/needs ---
+app.put('/events/:id/needs', async (req, res) => {
+  const reply = makeReply(res);
+  const user = await app.verifyAuth(req);
+  const { id } = req.params;
 
-    const ev = await ensureEventOwnerOrAdmin(user, id, reply);
-    if (!ev) return;
+  const ev = await ensureEventOwnerOrAdmin(user, id, reply);
+  if (!ev) return;
 
-    const { needs } = req.body || {};
-    if (!Array.isArray(needs)) {
-      return res
-        .status(400)
-        .json({ error: '`needs` must be an array' });
-    }
+  const { needs } = req.body || {};
+  if (!Array.isArray(needs)) {
+    return res
+      .status(400)
+      .json({ error: '`needs` must be an array' });
+  }
 
-    const cleanNeeds = needs
-      .map((n) => {
-        const label = (n.label || '').trim();
-        if (!label) return null;
+  const cleanNeeds = needs
+    .map((n) => {
+      const label = (n.label || '').trim();
+      if (!label) return null;
 
-        let budget = null;
-        if (n.budgetPlanned !== undefined && n.budgetPlanned !== null && n.budgetPlanned !== '') {
-          const b = Number(n.budgetPlanned);
-          if (!Number.isNaN(b)) budget = b;
+      // budget
+      let budget = null;
+      if (
+        n.budgetPlanned !== undefined &&
+        n.budgetPlanned !== null &&
+        n.budgetPlanned !== ''
+      ) {
+        const b = Number(n.budgetPlanned);
+        if (!Number.isNaN(b)) {
+          budget = b;
         }
+      }
 
-        return {
-          eventId: id,
-          label,
-          budgetPlanned: budget,
-          // pregătit pentru 02.4-B5 (integrare cu catalog)
-          categoryId: n.categoryId ?? null,
-          subcategoryId: n.subcategoryId ?? null,
-          tagId: n.tagId ?? null,
-        };
-      })
-      .filter(Boolean);
+      // categoryId / subcategoryId / tagId trebuie să fie Int sau null
+      const parseIntOrNull = (v) => {
+        if (v === undefined || v === null || v === '') return null;
+        const num = Number(v);
+        if (Number.isNaN(num)) return null;
+        return Math.trunc(num);
+      };
 
-    await prisma.$transaction([
-      prisma.eventNeed.deleteMany({ where: { eventId: id } }),
-      ...(cleanNeeds.length
-        ? [prisma.eventNeed.createMany({ data: cleanNeeds })]
-        : []),
-    ]);
+      const categoryId = parseIntOrNull(n.categoryId);
+      const subcategoryId = parseIntOrNull(n.subcategoryId);
+      const tagId = parseIntOrNull(n.tagId);
 
-    const latest = await prisma.eventNeed.findMany({
-      where: { eventId: id },
-      orderBy: { createdAt: 'asc' },
-    });
+      const notes =
+        n.notes !== undefined && n.notes !== null && String(n.notes).trim() !== ''
+          ? String(n.notes).trim()
+          : null;
 
-    return reply.send(latest);
+      return {
+        eventId: id,
+        label,
+        budgetPlanned: budget,
+        categoryId,
+        subcategoryId,
+        tagId,
+        notes,
+      };
+    })
+    .filter(Boolean);
+
+  await prisma.$transaction([
+    prisma.eventNeed.deleteMany({ where: { eventId: id } }),
+    ...(cleanNeeds.length
+      ? [prisma.eventNeed.createMany({ data: cleanNeeds })]
+      : []),
+  ]);
+
+  const latest = await prisma.eventNeed.findMany({
+    where: { eventId: id },
+    orderBy: { createdAt: 'asc' },
   });
+
+  return reply.send(latest);
+});
+
 
     app.patch('/events/:id', async (req, res) => {
     const reply = makeReply(res);

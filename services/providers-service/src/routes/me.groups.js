@@ -20,8 +20,7 @@ export default fp(async function meGroupsRoutes(fastify, opts) {
   // GET /v1/providers/me/groups
   // Listă grupuri create de mine + grupuri în care sunt membru
   // + servicii și pachete asociate grupurilor (prin groupId)
-  fastify.get(
-    '/v1/providers/me/groups',
+  fastify.get('/v1/providers/me/groups',
     {
       preHandler: [fastify.authenticate, requireProvider],
     },
@@ -106,7 +105,6 @@ export default fp(async function meGroupsRoutes(fastify, opts) {
         if (!m.group) continue;
         const g = m.group;
 
-        console.log("MEMBER GROUPS MAP: >>>>>>", g)
         const membershipMeta = {
           membershipId: m.id,
           role: m.role,
@@ -182,6 +180,7 @@ export default fp(async function meGroupsRoutes(fastify, opts) {
   );
 
   // POST /v1/providers/me/groups – grup nou (owner = provider-ul curent)
+    // POST /v1/providers/me/groups – grup nou (owner = provider-ul curent)
   fastify.post(
     '/v1/providers/me/groups',
     {
@@ -190,6 +189,7 @@ export default fp(async function meGroupsRoutes(fastify, opts) {
     async (request, reply) => {
       const userId = request.user.id;
       const profile = await getProfileOrThrow(userId);
+
       const {
         name,
         description,
@@ -198,29 +198,60 @@ export default fp(async function meGroupsRoutes(fastify, opts) {
         sharePolicy = 'MANUAL',
       } = request.body || {};
 
+      if (!name || !name.trim()) {
+        return reply.code(400).send({ message: 'Name is required' });
+      }
+
+      // validare minimală pe membri (dacă vin)
+      if (Array.isArray(members)) {
+        for (const m of members) {
+          if (!m.providerProfileId || !m.serviceOfferId) {
+            return reply.code(400).send({
+              message:
+                'Each member must have providerProfileId and serviceOfferId',
+            });
+          }
+        }
+      }
+
       const created = await prisma.providerGroup.create({
         data: {
           providerProfileId: profile.id,
-          name,
-          description,
+          name: name.trim(),
+          description: description || null,
           isActive,
           sharePolicy,
           members:
             Array.isArray(members) && members.length
               ? {
-                create: members.map((m) => ({
-                  userId: Number(m.userId),
-                  role: m.role || null,
-                  isActive: m.isActive ?? true,
-                  shareMode: m.shareMode || 'NONE',
-                  shareValue:
-                    m.shareValue != null ? Number(m.shareValue) : null,
-                })),
-              }
+                  create: members.map((m) => ({
+                    providerProfileId: Number(m.providerProfileId),
+                    serviceOfferId: Number(m.serviceOfferId),
+                    role: m.role || 'MEMBER',
+                    specializationTag: m.specializationTag || null,
+                    isActive: m.isActive ?? true,
+                    shareMode: m.shareMode || 'NONE',
+                    shareValue:
+                      m.shareValue != null ? Number(m.shareValue) : null,
+                  })),
+                }
               : undefined,
         },
         include: {
-          members: true,
+          members: {
+            include: {
+              providerProfile: {
+                select: {
+                  id: true,
+                  userId: true,
+                  displayName: true,
+                  email: true,
+                  city: true,
+                },
+              },
+              serviceOffer: true,
+            },
+          },
         },
       });
 
@@ -233,9 +264,9 @@ export default fp(async function meGroupsRoutes(fastify, opts) {
     }
   );
 
+
   // PUT /v1/providers/me/groups/:id – update + înlocuire totală membri
-  fastify.put(
-    '/v1/providers/me/groups/:id',
+  fastify.put('/v1/providers/me/groups/:id',
     {
       preHandler: [fastify.authenticate, requireProvider],
     },
@@ -248,9 +279,6 @@ export default fp(async function meGroupsRoutes(fastify, opts) {
         where: { id },
         include: { members: true },
       });
-      console.log('existing: ', existing)
-      console.log('profile: ', profile)
-      console.log('existing.providerProfileId !== profile.id: ', existing.providerProfileId !== profile.id)
 
       if (!existing || existing.providerProfileId !== profile.id) {
         return reply.code(404).send({ message: 'Group not found' });
@@ -258,8 +286,8 @@ export default fp(async function meGroupsRoutes(fastify, opts) {
 
       const { name, description, isActive, members, sharePolicy } =
         request.body || {};
-      console.log("request body: ", request.body)
-      const updated = await prisma.$transaction(async (tx) => {
+
+        const updated = await prisma.$transaction(async (tx) => {
         await tx.providerGroup.update({
           where: { id },
           data: {
@@ -274,12 +302,12 @@ export default fp(async function meGroupsRoutes(fastify, opts) {
           await tx.providerGroupMember.deleteMany({
             where: { groupId: id },
           });
-          console.log("members: >>>>>>>>>>>>", members)
+
           if (members.length > 0) {
             await tx.providerGroupMember.createMany({
               data: members.map((m) => ({
                 groupId: id,
-                providerProfileId: m.userId,
+                providerProfileId: m.providerProfileId,
                 role: m.role || null,
                 serviceOfferId: m.serviceOfferId,
                 specializationTag: m.specializationTag,
@@ -309,8 +337,7 @@ export default fp(async function meGroupsRoutes(fastify, opts) {
 
   // SEARCH membri potențiali pentru grup (pe profil, nu pe serviciu)
   // GET /v1/providers/me/group-members/search
-  fastify.get(
-    '/v1/providers/me/group-members/search',
+  fastify.get('/v1/providers/me/group-members/search',
     {
       preHandler: [fastify.authenticate, requireProvider],
     },
@@ -403,8 +430,7 @@ export default fp(async function meGroupsRoutes(fastify, opts) {
   );
 
   // Servicii ale unui provider (pentru asociere în grup) – rămâne neschimbat
-  fastify.get(
-    '/v1/providers/me/group-members/services',
+  fastify.get('/v1/providers/me/group-members/services',
     {
       preHandler: [fastify.authenticate, requireProvider],
     },
@@ -441,8 +467,7 @@ export default fp(async function meGroupsRoutes(fastify, opts) {
 
     // 🔹 NOU – membrul își poate părăsi singur grupul
   // POST /v1/providers/me/group-memberships/:id/leave
-  fastify.post(
-    '/v1/providers/me/group-memberships/:id/leave',
+  fastify.post('/v1/providers/me/group-memberships/:id/leave',
     {
       preHandler: [fastify.authenticate, requireProvider],
     },

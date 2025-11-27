@@ -33,6 +33,12 @@ enum TaskStatus {
   DONE
 }
 
+enum AssignmentStatus {
+  SHORTLISTED
+  SELECTED
+  CONFIRMED_PRE_CONTRACT
+}
+
 model Event {
   id          String           @id @default(cuid())
   clientId    String
@@ -57,6 +63,8 @@ model Event {
   participants EventParticipant[]
   offers       EventOffer[]
   needs        EventNeed[] 
+  invitations  EventInvitation[]
+  assignments  EventProviderAssignment[]
 }
 
 model EventNeed {
@@ -95,22 +103,36 @@ model EventTask {
   @@index([eventId])
 }
 model EventInvitation {
-  id         String              @id @default(cuid())
-  eventId    String
-  clientId   String              // cine invită (owner eveniment)
-  providerId String              // userId provider invitat
-  status     InvitationStatus    @default(PENDING)
-  note       String?             @db.Text
-  createdAt  DateTime            @default(now())
-  decidedAt  DateTime?
+  id              String           @id @default(cuid())
+  eventId         String
+  clientId        String           // cine invită (owner eveniment)
+  providerId      String?          // userId provider invitat (single provider)
+  providerGroupId String?          // alternativă: invităm un grup
+
+  status          InvitationStatus @default(PENDING)
+
+  message         String?          @db.Text  // mesaj de invitație
+  roleHint        String?          // ex: "music", "photo"
+  replyDeadline   DateTime?        // data limită pentru răspuns
+
+  note            String?          @db.Text  // legacy / compat (poți renunța ulterior)
+  proposedBudget Decimal?   // buget propus de client
+  budgetCurrency String?    // moneda bugetului (ex. RON, EUR)
+  createdAt       DateTime         @default(now())
+  decidedAt       DateTime?
+
+  event           Event            @relation(fields: [eventId], references: [id])
 
   @@index([eventId])
   @@index([providerId])
+  @@index([providerGroupId])
 }
+
 
 model EventMessage {
   id        String   @id @default(cuid())
   eventId   String
+  offerId   String?          // <— nou: mesaj legat de o ofertă anume (negocieri)
   authorId  String
   body      String   @db.Text
   createdAt DateTime @default(now())
@@ -118,7 +140,27 @@ model EventMessage {
   event     Event    @relation(fields: [eventId], references: [id])
 
   @@index([eventId])
-  @@index([authorId])
+  @@index([offerId])
+} 
+
+model EventProviderAssignment {
+  id              String           @id @default(cuid())
+  eventId         String
+  providerId      String?
+  providerGroupId String?
+
+  status          AssignmentStatus @default(SHORTLISTED)
+  sourceOfferId   String?
+  notes           String?          @db.Text
+
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  event           Event            @relation(fields: [eventId], references: [id])
+
+  @@index([eventId])
+  @@index([providerId])
+  @@index([providerGroupId])
 }
 
 model EventAttachment {
@@ -167,28 +209,41 @@ model EventTypeTemplate {
 enum OfferStatus {
   DRAFT
   SENT
-  ACCEPTED
-  DECLINED
+  REVISED
+  ACCEPTED               // generic
+  ACCEPTED_BY_CLIENT     // explicit
+  DECLINED               // generic
+  REJECTED               // generic
+  REJECTED_BY_CLIENT     // explicit
+  WITHDRAWN
   CANCELLED
 }
 model EventOffer {
-  id          String      @id @default(cuid())
-  eventId     String
-  providerId  String
-  groupId     String?
-  startsAt    DateTime?
-  endsAt      DateTime?
-  totalCost   Decimal?    @db.Decimal(12,2)
-  currency    String?     @default("RON")
-  status      OfferStatus @default(DRAFT)
-  notes       String?
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
+  id             String      @id @default(cuid())
+  eventId        String
+  invitationId   String?     // opțional: ofertă ca răspuns la o invitație
+  providerId     String
+  providerGroupId String?
 
-  event       Event       @relation(fields: [eventId], references: [id])
+  startsAt       DateTime?
+  endsAt         DateTime?
+
+  totalCost      Decimal?    @db.Decimal(12, 2)   // mapat la priceTotal în API
+  currency       String?     @default("RON")
+
+  status         OfferStatus @default(DRAFT)
+  detailsJson    Json?                     // structura flexibilă pentru pachete/servicii
+  notes          String?
+  version        Int         @default(1)   // pentru revizii
+
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+
+  event          Event       @relation(fields: [eventId], references: [id])
 
   @@index([eventId])
   @@index([providerId])
+  @@index([invitationId])
 }
 
 model ServiceGroup {
@@ -267,6 +322,7 @@ enum InvitationStatus {
   ACCEPTED
   DECLINED
   EXPIRED
+  CANCELLED
 }
 
 model Offer {

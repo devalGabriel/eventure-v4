@@ -68,6 +68,7 @@ const EMPTY_PACKAGE_FORM = {
   offerIds: [],
   type: "SINGLE_EVENT",
   internalOnly: false,
+  allowBelowBaseBudget: false,
 };
 
 export default function ProviderOffersPackagesSection() {
@@ -251,6 +252,7 @@ export default function ProviderOffersPackagesSection() {
           offerIds: (pkg.items || []).map((it) => it.serviceOfferId),
           type: pkg.type || "SINGLE_EVENT",
           internalOnly: !!pkg.internalOnly,
+          allowBelowBaseBudget: !!pkg.allowBelowBaseBudget,
         },
       },
     }));
@@ -331,6 +333,7 @@ export default function ProviderOffersPackagesSection() {
         currency: packageForm.currency,
         isPublic: !packageForm.internalOnly,
         internalOnly: !!packageForm.internalOnly,
+        allowBelowBaseBudget: !!packageForm.allowBelowBaseBudget,
         type: packageForm.type,
         offerIds: packageForm.offerIds || [],
       };
@@ -839,6 +842,24 @@ export default function ProviderOffersPackagesSection() {
               </MenuItem>
             ))}
           </TextField>
+
+          <FormControlLabel
+            control={
+              <Checkbox
+                checked={!!packageForm.allowBelowBaseBudget}
+                onChange={(e) => setPackageForm((prev)=>({
+                  ...prev,
+                  allowBelowBaseBudget: e.target.checked,
+                })
+                )}
+              />
+            }
+            label="Accept solicitări cu buget sub prețul de bază"
+          />
+          <Typography variant="caption" color="text.secondary">
+            Dacă debifezi, nu vei primi cereri pentru acest pachet atunci când
+            bugetul propus de client este mai mic decât prețul de bază.
+          </Typography>
 
           <FormControlLabel
             sx={{ mt: 1 }}

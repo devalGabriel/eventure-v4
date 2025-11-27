@@ -192,7 +192,7 @@ export async function getProviderServices(providerProfileId) {
     search.set('providerProfileId', String(providerProfileId));
   }
   const query = search.toString();
-  const url = `/api/providers/me/group-members/services${query ? `?${query}` : ''}`;
+  const url = `/api/providers/me/packages`;
 
   const res = await fetch(url, {
     method: 'GET',

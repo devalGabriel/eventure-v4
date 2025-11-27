@@ -12,6 +12,7 @@ const tabs = [
   { label: "Servicii & Pachete", value: "/dashboard/provider/services" },
   { label: "Disponibilitate", value: "/dashboard/provider/availability" },
   { label: "Grupuri", value: "/dashboard/provider/groups" },
+  { label: "Invitații", value: "/dashboard/provider/invitations" },
 ];
 
 export default function ProviderLayout({ children }) {

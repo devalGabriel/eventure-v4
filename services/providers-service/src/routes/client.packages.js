@@ -8,7 +8,7 @@ export default fp(async function clientPackagesRoutes(fastify, opts) {
   fastify.get(
     '/v1/client/packages',
     {
-      preHandler: [fastify.authenticate, requireClient]
+      preHandler: [fastify.authenticate, requireClient],
     },
     async (request, reply) => {
       const {
@@ -22,7 +22,9 @@ export default fp(async function clientPackagesRoutes(fastify, opts) {
         subcategoryId,
         onlyGroups,
         eventGuests,
-        eventBudget
+        eventBudget,
+        // 🔹 nou – buget propus specific pentru invitații
+        proposedBudget,
       } = request.query || {};
 
       const take = Math.min(50, Number(pageSize) || 12);
@@ -38,10 +40,7 @@ export default fp(async function clientPackagesRoutes(fastify, opts) {
       if (q && q.trim()) {
         const term = q.trim();
         and.push({
-          OR: [
-            { name: { contains: term } },
-            { description: { contains: term } }
-          ]
+          OR: [{ name: { contains: term } }, { description: { contains: term } }],
         });
       }
 
@@ -53,13 +52,13 @@ export default fp(async function clientPackagesRoutes(fastify, opts) {
             OR: [
               { city: { contains: loc } },
               { country: { contains: loc } },
-              { address: { contains: loc } }
-            ]
-          }
+              { address: { contains: loc } },
+            ],
+          },
         });
       }
 
-      // 💸 filtrare buget – folosim DOAR basePrice (ăsta există în ServicePackage)
+      // 💸 filtrare buget – folosim DOAR basePrice (existent în ServicePackage)
       const minB =
         budgetMin !== undefined && budgetMin !== null && budgetMin !== ''
           ? Number(budgetMin)
@@ -68,22 +67,24 @@ export default fp(async function clientPackagesRoutes(fastify, opts) {
         budgetMax !== undefined && budgetMax !== null && budgetMax !== ''
           ? Number(budgetMax)
           : null;
-      
+
       if (minB !== null && !Number.isNaN(minB)) {
         and.push({
-          basePrice: { gte: minB }
+          basePrice: { gte: minB },
         });
       }
 
       if (maxB !== null && !Number.isNaN(maxB)) {
         and.push({
-          basePrice: { lte: maxB }
+          basePrice: { lte: maxB },
         });
       }
 
       // 🧩 categorie / subcategorie – folosește ID-uri numerice dacă le trimiți
       const subcatId =
-        subcategoryId !== undefined && subcategoryId !== null && subcategoryId !== ''
+        subcategoryId !== undefined &&
+        subcategoryId !== null &&
+        subcategoryId !== ''
           ? Number(subcategoryId)
           : null;
       const catId =
@@ -95,9 +96,9 @@ export default fp(async function clientPackagesRoutes(fastify, opts) {
         and.push({
           providerProfile: {
             categories: {
-              some: { subcategoryId: subcatId }
-            }
-          }
+              some: { subcategoryId: subcatId },
+            },
+          },
         });
       } else if (catId !== null && !Number.isNaN(catId)) {
         and.push({
@@ -105,19 +106,44 @@ export default fp(async function clientPackagesRoutes(fastify, opts) {
             categories: {
               some: {
                 subcategory: {
-                  categoryId: catId
-                }
-              }
-            }
-          }
+                  categoryId: catId,
+                },
+              },
+            },
+          },
         });
       }
 
       // 📦 doar „grupuri” de servicii – momentan interpretate ca SINGLE_EVENT
-      // este necesar sa luam din serviceOffer daca este livrat de grup sau este livrat individual
+      // TODO: legătură directă cu grupurile când modelul e stabil
       if (String(onlyGroups).toLowerCase() === 'true') {
         and.push({
-          type: 'SINGLE_EVENT'
+          type: 'SINGLE_EVENT',
+        });
+      }
+
+      // 🔹 NOUA REGULĂ: proposedBudget + allowBelowBaseBudget
+      // - dacă clientul trimite proposedBudget, includem:
+      //    * pachete cu basePrice <= proposedBudget
+      //    * SAU pachete unde providerul a bifat allowBelowBaseBudget = true
+      let proposedBudgetNum = null;
+      if (
+        proposedBudget !== undefined &&
+        proposedBudget !== null &&
+        proposedBudget !== ''
+      ) {
+        const n = Number(proposedBudget);
+        if (!Number.isNaN(n) && n > 0) {
+          proposedBudgetNum = n;
+        }
+      }
+
+      if (proposedBudgetNum !== null) {
+        and.push({
+          OR: [
+            { basePrice: { lte: proposedBudgetNum } },
+            { allowBelowBaseBudget: true },
+          ],
         });
       }
 
@@ -132,31 +158,43 @@ export default fp(async function clientPackagesRoutes(fastify, opts) {
             providerProfile: true,
             items: {
               include: {
-                serviceOffer: true
-              }
-            }
+                serviceOffer: true,
+              },
+            },
           },
           orderBy: { createdAt: 'desc' },
           skip,
-          take
-        })
+          take,
+        }),
       ]);
 
-      // 🧠 scoring light doar pe buget (folosește basePrice, nu minBudget/maxBudget)
-      const evBudget =
-        eventBudget !== undefined && eventBudget !== null && eventBudget !== ''
-          ? Number(eventBudget)
-          : null;
+      // 🧠 scoring light pe buget
+      // folosim în scor în primul rând proposedBudget (dacă există),
+      // altfel eventBudget (cazul de browse clasic).
+      let budgetForScore = null;
+
+      if (proposedBudgetNum !== null) {
+        budgetForScore = proposedBudgetNum;
+      } else if (
+        eventBudget !== undefined &&
+        eventBudget !== null &&
+        eventBudget !== ''
+      ) {
+        const n = Number(eventBudget);
+        if (!Number.isNaN(n) && n > 0) {
+          budgetForScore = n;
+        }
+      }
 
       let items = rawItems.map((pkg) => {
         let score = 0;
 
-        if (evBudget !== null && !Number.isNaN(evBudget)) {
+        if (budgetForScore !== null && !Number.isNaN(budgetForScore)) {
           const base = pkg.basePrice ?? null;
           if (base !== null) {
-            const diff = Math.abs(Number(base) - evBudget);
-            if (diff <= evBudget * 0.1) score += 2; // ±10%
-            else if (diff <= evBudget * 0.25) score += 1; // ±25%
+            const diff = Math.abs(Number(base) - budgetForScore);
+            if (diff <= budgetForScore * 0.1) score += 2; // ±10%
+            else if (diff <= budgetForScore * 0.25) score += 1; // ±25%
           }
         }
 
@@ -170,12 +208,12 @@ export default fp(async function clientPackagesRoutes(fastify, opts) {
           const { _score, ...rest } = p;
           return {
             ...rest,
-            score: _score ?? null
+            score: _score ?? null,
           };
         }),
         total,
         page: Number(page),
-        pageSize: take
+        pageSize: take,
       });
     }
   );

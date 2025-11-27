@@ -23,16 +23,21 @@ async function getUserIdFromAuth() {
 export async function PATCH(_req, { params }) {
   const userId = await getUserIdFromAuth();
   if (!userId) return new NextResponse('Unauthorized', { status: 401 });
-
-  const id = params?.id;
+  const p = await params;
+  const id = p?.id;
   if (!id) return new NextResponse('Missing id', { status: 400 });
 
   const NOTIF = (process.env.NOTIFICATIONS_INTERNAL_URL || 'http://localhost:4105').replace(/\/$/, '');
-
+  
   try {
     const res = await fetch(`${NOTIF}/v1/notifications/${id}/read`, {
       method: 'PATCH',
-      headers: { 'content-type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Auth-User-Id': userId,
+      },
+      cache: 'no-store',
+      body: JSON.stringify({}),
     });
 
     if (!res.ok) {

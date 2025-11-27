@@ -50,5 +50,86 @@ router.get('/events/:eventId/messages', async (req, res, next) => {
     } catch (err) { next(err); }
   });
 
+  router.get('/offers/:offerId/messages', async (req, res, next) => {
+    try {
+      const user = await app.verifyAuth(req);
+      const { offerId } = req.params;
+
+      const offer = await prisma.eventOffer.findUnique({ where: { id: offerId } });
+      if (!offer) throw NotFound('Offer not found');
+
+      // permisiuni: admin OR client owner eveniment OR provider autor ofertă
+      if (user.role !== 'admin') {
+        if (user.role === 'provider') {
+          if (offer.providerId !== user.userId?.toString()) {
+            return res.status(403).json({ error: 'Forbidden' });
+          }
+        } else {
+          const ev = await prisma.event.findUnique({ where: { id: offer.eventId } });
+          if (!ev) throw NotFound('Event not found');
+          if (ev.clientId !== user.userId?.toString()) {
+            return res.status(403).json({ error: 'Forbidden' });
+          }
+        }
+      }
+
+      const messages = await prisma.eventMessage.findMany({
+        where: {
+          eventId: offer.eventId,
+          offerId,
+        },
+        orderBy: { createdAt: 'asc' },
+      });
+
+      return res.json(messages);
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  // --- OFFER MESSAGES: POST /offers/:offerId/messages ---
+  router.post('/offers/:offerId/messages', async (req, res, next) => {
+    try {
+      const user = await app.verifyAuth(req);
+      const { offerId } = req.params;
+      const { body } = req.body || {};
+
+      if (!body || !String(body).trim()) {
+        throw BadRequest('body is required');
+      }
+
+      const offer = await prisma.eventOffer.findUnique({ where: { id: offerId } });
+      if (!offer) throw NotFound('Offer not found');
+
+      // permisiuni: aceleași ca la GET
+      if (user.role !== 'admin') {
+        if (user.role === 'provider') {
+          if (offer.providerId !== user.userId?.toString()) {
+            return res.status(403).json({ error: 'Forbidden' });
+          }
+        } else {
+          const ev = await prisma.event.findUnique({ where: { id: offer.eventId } });
+          if (!ev) throw NotFound('Event not found');
+          if (ev.clientId !== user.userId?.toString()) {
+            return res.status(403).json({ error: 'Forbidden' });
+          }
+        }
+      }
+
+      const created = await prisma.eventMessage.create({
+        data: {
+          eventId: offer.eventId,
+          offerId,
+          authorId: user.userId?.toString() || '',
+          body: String(body),
+        },
+      });
+
+      return res.status(201).json(created);
+    } catch (err) {
+      next(err);
+    }
+  });
+
   app.use(router);
 }

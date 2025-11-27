@@ -20,7 +20,7 @@ export const register = async (req, res, next) => {
           {
             authUserId: user.id,
             email: user.email,
-            fullName: user.fullName || (user.email ? user.email.split("@")[0] : "User"),
+            fullName: user.name || (user.email ? user.email.split("@")[0] : "User"),
           }
         );
       } else {

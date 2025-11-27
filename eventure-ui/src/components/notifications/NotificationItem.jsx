@@ -30,7 +30,7 @@ export default function NotificationItem({ notification, onMarkedRead, handleClo
 
   const handleClick = async () => {
     const target = notificationTarget(notification, locale);
-    console.log("target: ", target)
+    console.log("notification: ", notification)
     if (!isRead) {
       try {
         await markNotificationRead(notification.id);

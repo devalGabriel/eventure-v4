@@ -162,7 +162,7 @@ const statusColor =
       )}
 
       <Grid container spacing={2}>
-        <Grid item xs={12} md={6}>
+        <Grid xs={12} md={6}>
           <TextField
             label="Nume afișat"
             fullWidth
@@ -193,7 +193,7 @@ const statusColor =
           />
         </Grid>
 
-        <Grid item xs={12} md={6}>
+        <Grid xs={12} md={6}>
           <TextField
             label="Email"
             fullWidth
@@ -231,7 +231,7 @@ const statusColor =
           />
         </Grid>
 
-        <Grid item xs={12}>
+        <Grid xs={12}>
           <TextField
             label="Descriere"
             fullWidth
@@ -244,7 +244,7 @@ const statusColor =
         </Grid>
 
         {/* Categorii / subcategorii & tag-uri */}
-        <Grid item xs={12} md={6} minWidth={"200px"}>
+        <Grid xs={12} md={6} minWidth={"200px"}>
           <FormControl fullWidth margin="normal">
             <InputLabel id="subcategories-label">Subcategorii</InputLabel>
             <Select
@@ -282,7 +282,7 @@ const statusColor =
           </FormControl>
         </Grid>
 
-        <Grid item xs={12} md={6} minWidth={"200px"}>
+        <Grid xs={12} md={6} minWidth={"200px"}>
           <FormControl fullWidth margin="normal">
             <InputLabel id="tags-label">Tag-uri</InputLabel>
             <Select
@@ -324,7 +324,7 @@ const statusColor =
           </FormControl>
         </Grid>
 
-        <Grid item xs={12}>
+        <Grid xs={12}>
           <Stack direction="row" spacing={2} justifyContent="flex-end" sx={{ mt: 2 }}>
             <Button
               variant="contained"

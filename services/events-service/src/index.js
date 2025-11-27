@@ -19,6 +19,8 @@ import { groupsRoutes } from './routes/groups.js';
 import { eventTemplatesRoutes } from './routes/eventTemplates.js';
 import { eventTypesRoutes } from './routes/eventTypes.js';
 import { eventBriefBudgetRoutes } from './routes/eventBriefBudget.js';
+import { assignmentsRoutes } from './routes/assignments.js';
+import { adminPreContractRoutes } from './routes/adminPreContract.js';
 
 // auth util
 import { verifyAuthFactory } from './middlewares/auth.js';
@@ -73,6 +75,8 @@ if (groupsRoutes) groupsRoutes(app);
 if (eventTemplatesRoutes) eventTemplatesRoutes(app);
 if (eventBriefBudgetRoutes) eventBriefBudgetRoutes(app);
 if (eventTypesRoutes) eventTypesRoutes(app);
+if (assignmentsRoutes) assignmentsRoutes(app);
+if (adminPreContractRoutes) adminPreContractRoutes(app);
 
 // health
 app.get('/health', (_req, res) => res.json({ ok: true }));

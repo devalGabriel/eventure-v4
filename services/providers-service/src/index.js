@@ -14,7 +14,7 @@ import adminCatalogRoutes from './routes/admin.catalog.js';
 import meGroupsRoutes from './routes/me.groups.js';
 import { meGroupMembersRoutes } from './routes/me.groupMembers.js';
 import clientPackages from './routes/client.packages.js';
-
+import { publicCatalogRoutes } from './routes/publicCatalog.js';
 
 dotenv.config();
 
@@ -59,6 +59,7 @@ async function buildServer() {
   await fastify.register(meGroupsRoutes);
   await fastify.register(meGroupMembersRoutes, {prefix: '/api'})
   await fastify.register(clientPackages, {prefix: '/api'})
+  await fastify.register(publicCatalogRoutes), { prefix: '/api' };
 
   fastify.get('/', async () => ({
     service: 'providers-service',

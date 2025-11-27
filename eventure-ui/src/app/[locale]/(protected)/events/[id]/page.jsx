@@ -19,6 +19,9 @@ import {
   DialogContent,
   DialogActions,
   Tooltip,
+  LinearProgress,
+  FormControl,
+  InputLabel,
 } from "@mui/material";
 import SaveIcon from "@mui/icons-material/Save";
 import Link from "next/link";
@@ -27,6 +30,8 @@ import { getRoleServer } from "@/lib/utils";
 import { useNotify } from "@/components/providers/NotificationProvider";
 import BudgetEstimatePanel from "@/components/events/BudgetEstimatePanel";
 import BriefTemplatePanel from "@/components/events/BriefTemplatePanel";
+import EventInvitationsOffersSection from '@/components/events/EventInvitationsOffersSection';
+
 import { extractLocaleAndPath } from "@/lib/extractLocaleAndPath";
 
 const statusOptions = ["DRAFT", "PLANNING", "ACTIVE", "COMPLETED", "CANCELED"];
@@ -167,21 +172,26 @@ export default function EventDetailsPage() {
         <Tab label="Overview" />
         <Tab label="Brief & needs" />
         <Tab label="Tasks" />
-        <Tab label="Invitations" />
+        <Tab label="Invitations & Offers" />
+        <Tab label="Selected providers" />
         <Tab label="Messages" />
         <Tab label="Files" />
-        <Tab label="Offers" />
       </Tabs>
 
       <Divider />
 
       {tab === 0 && <OverviewTab event={event} onSaved={reload} />}
-      {tab === 1 && <BriefTab event={event} />}
-      {tab === 2 && <TasksTab eventId={event.id} eventDate={event.date} />}
-      {tab === 3 && <InvitationsTab eventId={event.id} />}
-      {tab === 4 && <MessagesTab eventId={event.id} />}
-      {tab === 5 && <FilesTab eventId={event.id} />}
-      {tab === 6 && <OffersTab eventId={event.id} role={role} />}
+{tab === 1 && <BriefTab event={event} />}
+{tab === 2 && <TasksTab eventId={event.id} eventDate={event.date} />}
+{tab === 3 && (
+  <EventInvitationsOffersSection eventId={event.id} role={role} />
+)}
+{tab === 4 && (
+  <SelectedProvidersTab eventId={event.id} />
+)}
+{tab === 5 && <MessagesTab eventId={event.id} />}
+{tab === 6 && <FilesTab eventId={event.id} />}
+
     </Stack>
   );
 }
@@ -315,10 +325,37 @@ function BriefTab({ event }) {
   const [locationType, setLocationType] = useState("");
   const [notes, setNotes] = useState("");
 
+  // EventNeed state: păstrăm TOATE câmpurile relevante
   const [needs, setNeeds] = useState([]);
   const [newNeedLabel, setNewNeedLabel] = useState("");
   const [newNeedBudget, setNewNeedBudget] = useState("");
 
+  // --- Categorii / Subcategorii ---
+  const [categories, setCategories] = useState([]);
+  const [loadingCategories, setLoadingCategories] = useState(true);
+
+  // -------------------------
+  // LOAD CATEGORII
+  // -------------------------
+  useEffect(() => {
+    async function loadCategories() {
+      try {
+        const res = await fetch("/api/providers/catalog/categories", { cache: "force-cache" });
+        const txt = await res.text();
+        const data = txt ? JSON.parse(txt) : [];
+        setCategories(Array.isArray(data) ? data : []);
+      } catch (err) {
+        console.error("Failed to load categories:", err);
+      } finally {
+        setLoadingCategories(false);
+      }
+    }
+    loadCategories();
+  }, []);
+
+  // -------------------------
+  // LOAD BRIEF + NEEDS
+  // -------------------------
   async function load() {
     setLoading(true);
     try {
@@ -349,6 +386,23 @@ function BriefTab({ event }) {
                 n.budgetPlanned === null || n.budgetPlanned === undefined
                   ? ""
                   : String(n.budgetPlanned),
+
+              categoryId:
+                n.categoryId === null || n.categoryId === undefined
+                  ? null
+                  : n.categoryId,
+
+              subcategoryId:
+                n.subcategoryId === null || n.subcategoryId === undefined
+                  ? null
+                  : n.subcategoryId,
+
+              tagId:
+                n.tagId === null || n.tagId === undefined
+                  ? null
+                  : n.tagId,
+
+              notes: n.notes || "",
             }))
           : []
       );
@@ -364,6 +418,9 @@ function BriefTab({ event }) {
     load();
   }, [event.id]);
 
+  // -------------------------
+  // HANDLERE NEEDS
+  // -------------------------
   function updateNeed(idx, patch) {
     setNeeds((prev) =>
       prev.map((n, i) => (i === idx ? { ...n, ...patch } : n))
@@ -389,6 +446,10 @@ function BriefTab({ event }) {
         id: `tmp-${Date.now()}-${prev.length}`,
         label,
         budgetPlanned: b,
+        categoryId: null,
+        subcategoryId: null,
+        tagId: null,
+        notes: "",
       },
     ]);
 
@@ -396,6 +457,9 @@ function BriefTab({ event }) {
     setNewNeedBudget("");
   }
 
+  // -------------------------
+  // SAVE
+  // -------------------------
   async function save() {
     try {
       setLoading(true);
@@ -422,6 +486,34 @@ function BriefTab({ event }) {
             n.budgetPlanned === "" || n.budgetPlanned === null
               ? null
               : Number(n.budgetPlanned),
+
+          categoryId:
+            n.categoryId === undefined ||
+            n.categoryId === null ||
+            n.categoryId === ""
+              ? null
+              : n.categoryId,
+
+          subcategoryId:
+            n.subcategoryId === undefined ||
+            n.subcategoryId === null ||
+            n.subcategoryId === ""
+              ? null
+              : n.subcategoryId,
+
+          tagId:
+            n.tagId === undefined ||
+            n.tagId === null ||
+            n.tagId === ""
+              ? null
+              : n.tagId,
+
+          notes:
+            n.notes !== undefined &&
+            n.notes !== null &&
+            String(n.notes).trim() !== ""
+              ? String(n.notes).trim()
+              : null,
         })),
       };
 
@@ -441,6 +533,9 @@ function BriefTab({ event }) {
     }
   }
 
+  // -------------------------
+  // RENDER
+  // -------------------------
   return (
     <Card>
       <CardContent>
@@ -486,8 +581,12 @@ function BriefTab({ event }) {
 
           <Divider />
 
+          {/* ------------------------- */}
+          {/* NEVOI DE SERVICII */}
+          {/* ------------------------- */}
           <Typography variant="h6">Nevoi de servicii</Typography>
 
+          {/* Add Need */}
           <Stack
             direction={{ xs: "column", sm: "row" }}
             spacing={2}
@@ -510,6 +609,7 @@ function BriefTab({ event }) {
             </Button>
           </Stack>
 
+          {/* Existing Needs */}
           <Stack spacing={1}>
             {needs.map((n, idx) => (
               <Card key={n.id || idx} sx={{ p: 1 }}>
@@ -519,23 +619,77 @@ function BriefTab({ event }) {
                   alignItems={{ xs: "flex-start", sm: "center" }}
                   justifyContent="space-between"
                 >
+                  {/* Serviciu */}
                   <TextField
                     label="Serviciu"
                     value={n.label}
-                    onChange={(e) => updateNeed(idx, { label: e.target.value })}
+                    onChange={(e) =>
+                      updateNeed(idx, { label: e.target.value })
+                    }
                     sx={{ flex: 2 }}
                   />
+
+                  {/* Categorie */}
+                  <FormControl sx={{ flex: 1, minWidth: 180 }}>
+                    <InputLabel>Categorie</InputLabel>
+                    <Select
+                      value={n.categoryId || ""}
+                      label="Categorie"
+                      onChange={(e) => {
+                        const categoryId = e.target.value || null;
+                        updateNeed(idx, {
+                          categoryId,
+                          subcategoryId: null,
+                        });
+                      }}
+                    >
+                      <MenuItem value="">Alege categoria</MenuItem>
+                      {categories.map((cat) => (
+                        <MenuItem key={cat.id} value={cat.id}>
+                          {cat.name}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+
+                  {/* Subcategorie */}
+                  <FormControl
+                    sx={{ flex: 1, minWidth: 180 }}
+                    disabled={!n.categoryId}
+                  >
+                    <InputLabel>Subcategorie</InputLabel>
+                    <Select
+                      value={n.subcategoryId || ""}
+                      label="Subcategorie"
+                      onChange={(e) =>
+                        updateNeed(idx, {
+                          subcategoryId: e.target.value || null,
+                        })
+                      }
+                    >
+                      <MenuItem value="">Nicio subcategorie</MenuItem>
+                      {(categories.find((c) => c.id === n.categoryId)
+                        ?.subcategories || []
+                      ).map((sub) => (
+                        <MenuItem key={sub.id} value={sub.id}>
+                          {sub.name}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+
+                  {/* Buget */}
                   <TextField
                     label="Buget"
                     type="number"
                     value={n.budgetPlanned}
                     onChange={(e) =>
-                      updateNeed(idx, {
-                        budgetPlanned: e.target.value,
-                      })
+                      updateNeed(idx, { budgetPlanned: e.target.value })
                     }
                     sx={{ flex: 1 }}
                   />
+
+                  {/* Delete */}
                   <Button
                     variant="text"
                     color="error"
@@ -546,6 +700,7 @@ function BriefTab({ event }) {
                 </Stack>
               </Card>
             ))}
+
             {!needs.length && (
               <Box sx={{ p: 2, color: "text.secondary" }}>
                 Nu ai definit încă nevoi de servicii.
@@ -553,11 +708,13 @@ function BriefTab({ event }) {
             )}
           </Stack>
 
+          {/* SAVE */}
           <Stack direction="row" spacing={2}>
             <Button variant="contained" onClick={save} disabled={loading}>
               Salvează brief & nevoi
             </Button>
           </Stack>
+
           <BriefTemplatePanel eventId={event.id} />
 
           <Box sx={{ mt: 2 }}>
@@ -568,6 +725,7 @@ function BriefTab({ event }) {
     </Card>
   );
 }
+
 
 function TasksTab({ eventId, eventDate }) {
   const { notify } = useNotify();
@@ -951,66 +1109,6 @@ function TasksTab({ eventId, eventDate }) {
   );
 }
 
-function InvitationsTab({ eventId }) {
-  const [items, setItems] = useState([]);
-  const [invitedId, setInvitedId] = useState("");
-  const [role, setRole] = useState("PROVIDER");
-  async function load() {
-    const r = await fetch(`/api/events/${eventId}/invitations`);
-    const d = await r.json();
-    setItems(d || []);
-  }
-  async function invite() {
-    if (!invitedId.trim()) return;
-    await fetch(`/api/events/${eventId}/invitations`, {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ invitedId: invitedId.trim(), role }),
-    });
-    setInvitedId("");
-    await load();
-  }
-  useEffect(() => {
-    load();
-  }, [eventId]);
-  return (
-    <Stack spacing={2}>
-      <Stack direction="row" spacing={2}>
-        <TextField
-          label="User ID provider"
-          value={invitedId}
-          onChange={(e) => setInvitedId(e.target.value)}
-        />
-        <TextField
-          label="Rol"
-          value={role}
-          onChange={(e) => setRole(e.target.value)}
-        />
-        <Button variant="contained" onClick={invite}>
-          Invită
-        </Button>
-      </Stack>
-      {items.map((inv) => (
-        <Card key={inv.id} sx={{ p: 1 }}>
-          <Stack
-            direction="row"
-            alignItems="center"
-            justifyContent="space-between"
-          >
-            <Typography>
-              {inv.invitedId} • {inv.role}
-            </Typography>
-            <Chip label={inv.status} />
-          </Stack>
-        </Card>
-      ))}
-      {!items.length && (
-        <Box sx={{ p: 2, color: "text.secondary" }}>Fără invitații.</Box>
-      )}
-    </Stack>
-  );
-}
-
 function MessagesTab({ eventId }) {
   const [items, setItems] = useState([]);
   const [body, setBody] = useState("");
@@ -1134,180 +1232,120 @@ function FilesTab({ eventId }) {
   );
 }
 
-function OffersTab({ eventId, role }) {
-  const [list, setList] = useState([]);
-  const [editing, setEditing] = useState({
-    startsAt: "",
-    endsAt: "",
-    totalCost: "",
-    currency: "RON",
-    notes: "",
-  });
+function SelectedProvidersTab({ eventId }) {
+  const [rows, setRows] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  async function load() {
-    const r = await fetch(`/api/events/${eventId}/offers`);
-    const d = await r.json();
-    setList(d || []);
-  }
   useEffect(() => {
+    let mounted = true;
+    async function load() {
+      setLoading(true);
+      setError(null);
+      try {
+        const r = await fetch(`/api/events/${eventId}/assignments`, {
+          cache: 'no-store',
+        });
+        const txt = await r.text();
+        if (!r.ok) throw new Error(txt || 'Load failed');
+        const json = txt ? JSON.parse(txt) : [];
+        const list = Array.isArray(json) ? json : json.rows || [];
+        if (mounted) setRows(list);
+      } catch (e) {
+        console.error(e);
+        if (mounted) setError(String(e?.message || e));
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    }
     load();
+    return () => {
+      mounted = false;
+    };
   }, [eventId]);
 
-  async function saveOffer() {
-    const payload = {
-      startsAt: editing.startsAt
-        ? new Date(editing.startsAt).toISOString()
-        : null,
-      endsAt: editing.endsAt ? new Date(editing.endsAt).toISOString() : null,
-      totalCost: editing.totalCost ? Number(editing.totalCost) : null,
-      currency: editing.currency,
-      notes: editing.notes || null,
-    };
-    await fetch(`/api/events/${eventId}/offers`, {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify(payload),
-    });
-    setEditing({
-      startsAt: "",
-      endsAt: "",
-      totalCost: "",
-      currency: "RON",
-      notes: "",
-    });
-    await load();
-  }
-
-  async function setStatus(offerId, status) {
-    await fetch(`/api/events/${eventId}/offers/${offerId}`, {
-      method: "PATCH",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ status }),
-    });
-    await load();
-  }
-
   return (
-    <Stack spacing={2}>
-      {role === "provider" && (
-        <Card>
-          <CardContent>
-            <Typography variant="subtitle1" sx={{ mb: 1 }}>
-              Propune ofertă
-            </Typography>
-            <Stack direction="row" spacing={2} flexWrap="wrap">
-              <TextField
-                type="datetime-local"
-                label="Start"
-                value={editing.startsAt}
-                onChange={(e) =>
-                  setEditing((s) => ({ ...s, startsAt: e.target.value }))
-                }
-              />
-              <TextField
-                type="datetime-local"
-                label="Sfârșit"
-                value={editing.endsAt}
-                onChange={(e) =>
-                  setEditing((s) => ({ ...s, endsAt: e.target.value }))
-                }
-              />
-              <TextField
-                label="Cost total"
-                value={editing.totalCost}
-                onChange={(e) =>
-                  setEditing((s) => ({ ...s, totalCost: e.target.value }))
-                }
-              />
-              <TextField
-                label="Valută"
-                value={editing.currency}
-                onChange={(e) =>
-                  setEditing((s) => ({ ...s, currency: e.target.value }))
-                }
-              />
-              <TextField
-                label="Note"
-                value={editing.notes}
-                onChange={(e) =>
-                  setEditing((s) => ({ ...s, notes: e.target.value }))
-                }
-              />
-              <Button variant="contained" onClick={saveOffer}>
-                Trimite
-              </Button>
-            </Stack>
-          </CardContent>
-        </Card>
+    <Box sx={{ mt: 2 }}>
+      {loading && <LinearProgress sx={{ mb: 2 }} />}
+      {error && (
+        <Typography color="error" sx={{ mb: 2 }}>
+          {error}
+        </Typography>
       )}
-
-      {list.map((o) => (
-        <Card key={o.id}>
-          <CardContent>
-            <Stack
-              direction="row"
-              justifyContent="space-between"
-              alignItems="center"
-            >
-              <Stack spacing={0.5}>
-                <Typography variant="subtitle1">
-                  {o.totalCost
-                    ? `${o.totalCost} ${o.currency || "RON"}`
-                    : "fără preț"}
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  {o.startsAt ? new Date(o.startsAt).toLocaleString() : "-"} →{" "}
-                  {o.endsAt ? new Date(o.endsAt).toLocaleString() : "-"}
-                </Typography>
-                {o.notes && <Typography variant="body2">{o.notes}</Typography>}
-              </Stack>
-              <Stack direction="row" spacing={1}>
-                <Chip label={o.status} />
-                {role === "provider" &&
-                  (o.status === "DRAFT" || o.status === "SENT") && (
-                    <>
-                      {o.status === "DRAFT" && (
-                        <Button
-                          size="small"
-                          onClick={() => setStatus(o.id, "SENT")}
-                        >
-                          Trimite
-                        </Button>
-                      )}
-                      <Button
-                        size="small"
-                        onClick={() => setStatus(o.id, "WITHDRAWN")}
-                      >
-                        Retrage
-                      </Button>
-                    </>
+      <Stack spacing={1}>
+        {rows.map((a) => (
+          <Card key={a.id} sx={{ borderRadius: 2 }}>
+            <CardContent>
+              <Stack
+                direction={{ xs: 'column', md: 'row' }}
+                justifyContent="space-between"
+                spacing={1}
+              >
+                <Box>
+                  <Typography variant="subtitle1">
+                    Provider / Grup: {a.providerId || a.providerGroupId || '-'}
+                  </Typography>
+                  {a.notes && (
+                    <Typography variant="body2" color="text.secondary">
+                      {a.notes}
+                    </Typography>
                   )}
-                {role === "client" && o.status === "SENT" && (
-                  <>
-                    <Button
-                      size="small"
-                      color="success"
-                      onClick={() => setStatus(o.id, "ACCEPTED")}
-                    >
-                      Acceptă
-                    </Button>
-                    <Button
-                      size="small"
-                      color="error"
-                      onClick={() => setStatus(o.id, "REJECTED")}
-                    >
-                      Respinge
-                    </Button>
-                  </>
-                )}
+                </Box>
+                <Stack spacing={1} alignItems={{ xs: 'flex-start', md: 'flex-end' }}>
+                  <Chip
+                    label={a.status}
+                    size="small"
+                    color={
+                      a.status === 'CONFIRMED_PRE_CONTRACT'
+                        ? 'success'
+                        : a.status === 'SELECTED'
+                        ? 'info'
+                        : 'default'
+                    }
+                  />
+                  <Button
+                    size="small"
+                    variant="outlined"
+                    onClick={async () => {
+                      try {
+                        const targetStatus =
+                          a.status === 'SHORTLISTED'
+                            ? 'SELECTED'
+                            : 'CONFIRMED_PRE_CONTRACT';
+                        const r = await fetch(`/api/assignments/${a.id}`, {
+                          method: 'PATCH',
+                          headers: { 'content-type': 'application/json' },
+                          body: JSON.stringify({ status: targetStatus }),
+                        });
+                        const txt = await r.text();
+                        if (!r.ok)
+                          throw new Error(
+                            txt || `Update failed with ${r.status}`
+                          );
+                        // reload simplu
+                        location.reload();
+                      } catch (e) {
+                        alert(String(e?.message || e));
+                      }
+                    }}
+                  >
+                    {a.status === 'SHORTLISTED'
+                      ? 'Select provider'
+                      : a.status === 'SELECTED'
+                      ? 'Confirm pre-contract'
+                      : 'Pre-contract confirmed'}
+                  </Button>
+                </Stack>
               </Stack>
-            </Stack>
-          </CardContent>
-        </Card>
-      ))}
-      {!list.length && (
-        <Box sx={{ p: 2, color: "text.secondary" }}>Nu există oferte încă.</Box>
-      )}
-    </Stack>
+            </CardContent>
+          </Card>
+        ))}
+        {!rows.length && !loading && (
+          <Box sx={{ p: 1, color: 'text.secondary' }}>
+            Nu ai selectat încă furnizori pentru acest eveniment.
+          </Box>
+        )}
+      </Stack>
+    </Box>
   );
 }

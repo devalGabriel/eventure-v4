@@ -23,6 +23,46 @@ export function notificationTarget(notification, locale = 'ro') {
       // dacă e respins sau altceva → la pagina de apply, să poată re-aplica / vedea mesajul
       return `/${locale}/profile/provider/apply`;
     }
+    case "EVENT_INVITATION_SENT": {
+      // provider invitat la un eveniment
+      if (meta.eventId) {
+        return `/${locale}/dashboard/provider/invitations`;
+      }
+      return `/${locale}/dashboard/provider/invitations`;
+    }
+
+    case "EVENT_INVITATION_DECIDED": {
+      // client află că providerul a acceptat/declinat
+      if (meta.eventId) {
+        return `/${locale}/events/${meta.eventId}`;
+      }
+      return `/${locale}/events`;
+    }
+
+    case "EVENT_OFFER_SUBMITTED":
+    case "EVENT_OFFER_REVISED": {
+      // client – ofertă nouă / revizuită
+      if (meta.eventId) {
+        return `/${locale}/events/${meta.eventId}`;
+      }
+      return `/${locale}/events`;
+    }
+
+    case "EVENT_OFFER_DECIDED": {
+      // provider – oferta lui a fost acceptată / respinsă
+      if (meta.eventId) {
+        return `/${locale}/dashboard/provider/events`;
+      }
+      return `/${locale}/dashboard/provider`;
+    }
+
+    case "EVENT_PROVIDER_SELECTED": {
+      // provider selectat / confirmat pre-contract
+      if (meta.eventId) {
+        return `/${locale}/dashboard/provider/events`;
+      }
+      return `/${locale}/dashboard/provider`;
+    }
 
     // 🔹 Notificări de plată (ex: facturi)
     case 'payment':

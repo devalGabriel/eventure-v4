@@ -81,6 +81,10 @@ export default function BudgetEstimatePanel({ eventId }) {
   return (
     <Card>
       <CardHeader title="Estimare buget" subheader={label || "Tip eveniment"} />
+      <Typography variant="caption" sx={{ px: 2 }} color="error.main">
+        (***Estimarea de buget se va realiza in productie pe baza datelor reale ale
+        evenimentului si ale nevoilor introduse de client***)
+      </Typography>
       <CardContent>
         <Stack spacing={1.5}>
           <Stack direction="row" spacing={2} alignItems="center">

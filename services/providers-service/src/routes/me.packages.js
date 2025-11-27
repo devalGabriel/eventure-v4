@@ -81,6 +81,7 @@ export default fp(async function mePackagesRoutes(fastify, opts) {
       currency,
       isPublic,
       internalOnly,
+      allowBelowBaseBudget,
       type,       // SINGLE_EVENT, MULTI_DAY, SUBSCRIPTION
       offerIds
     } = request.body || {};
@@ -134,6 +135,7 @@ export default fp(async function mePackagesRoutes(fastify, opts) {
         currency,
         isPublic: isPublic ?? true,
         internalOnly: internalOnly ?? false,
+        allowBelowBaseBudget,
         type: type || 'SINGLE_EVENT',
         items: offerIds && Array.isArray(offerIds) && offerIds.length
           ? {
@@ -174,6 +176,7 @@ export default fp(async function mePackagesRoutes(fastify, opts) {
       currency,
       isPublic,
       internalOnly,
+      allowBelowBaseBudget,
       type,
       offerIds    // array de ID-uri ServiceOffer
     } = request.body || {};
@@ -239,6 +242,7 @@ export default fp(async function mePackagesRoutes(fastify, opts) {
           currency,
           isPublic,
           internalOnly,
+          allowBelowBaseBudget,
           type
         }
       });

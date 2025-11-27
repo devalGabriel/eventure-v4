@@ -36,6 +36,10 @@ const NAV_BY_ROLE = {
         { label: "Events", href: "/dashboard/admin/events" },
         { label: "Event Templates", href: "/dashboard/admin/event-templates" },
         { label: "Brief Templates", href: "/dashboard/admin/events/brief-templates" },
+        {
+          label: "Pre-contracts",
+          href: "/dashboard/admin/events/pre-contracts",
+        },
       ],
     },
     {

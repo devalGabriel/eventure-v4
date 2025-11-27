@@ -39,9 +39,13 @@ module.exports = async function routes(fastify) {
 
   // PATCH /v1/notifications/:id/read
   fastify.patch('/v1/notifications/:id/read', async (req) => {
-    const { id } = req.params;
-
-    const updated = await prisma.notification.update({
+    console.log('Received request to mark notification as read >>>>>>>>> HIT <<<<<<<<<<<<<');
+    const { id } = await req.params;
+    console.log('Marking notification as read, id:', id);
+    console.log('Request headers:', req.headers);
+    console.log('Request body:', req.body);
+    try {
+      const updated = await prisma.notification.update({
       where: { id },
       data: { status: 'READ', readAt: new Date() },
     });
@@ -56,12 +60,15 @@ module.exports = async function routes(fastify) {
       meta: updated.data || null,
       type: updated.type || null,
     };
+    } catch (error) {
+      console.error('Error marking notification as read:', error);
+      return { error: 'Failed to mark notification as read' };
+    }
   });
 
   // POST /v1/notifications/mark-read
   // body: { authUserId?: string, all?: boolean, ids?: string[] }
   fastify.post('/v1/notifications/mark-read', async (req) => {
-    console.log('HIT /v1/notifications/mark-read');
     const { authUserId, all, ids } = req.body || {};
     const target =
       authUserId ||
