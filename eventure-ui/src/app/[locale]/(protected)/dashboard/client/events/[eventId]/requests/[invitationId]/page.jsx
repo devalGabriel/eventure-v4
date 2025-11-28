@@ -3,15 +3,16 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import {
-  Box,
-  LinearProgress,
-  Typography,
-  Alert,
-} from "@mui/material";
+import { Box, LinearProgress, Typography, Alert } from "@mui/material";
 
 import EventRequestDetail from "@/components/events/EventRequestDetail";
-import { getEventRequestDetail } from "@/lib/api/eventsClient";
+import {
+  getEventMessages,
+  getEventRequestDetail,
+  postEventMessage,
+  getOfferMessages,
+  postOfferMessage,
+} from "@/lib/api/eventsClient";import MessagesThread from "@/components/shared/MessagesThread";
 
 export default function ClientEventRequestDetailPage() {
   const params = useParams();
@@ -35,6 +36,7 @@ export default function ClientEventRequestDetailPage() {
   const [event, setEvent] = useState(null);
   const [invitation, setInvitation] = useState(null);
   const [offers, setOffers] = useState([]);
+  const [activeOfferId, setActiveOfferId] = useState(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -58,7 +60,9 @@ export default function ClientEventRequestDetailPage() {
 
         setEvent(json.event || null);
         setInvitation(json.invitation || null);
-        setOffers(Array.isArray(json.offers) ? json.offers : json.offers?.rows || []);
+        setOffers(
+          Array.isArray(json.offers) ? json.offers : json.offers?.rows || []
+        );
       } catch (err) {
         console.error(err);
         if (!cancelled) setError(String(err?.message || err));
@@ -72,6 +76,20 @@ export default function ClientEventRequestDetailPage() {
       cancelled = true;
     };
   }, [eventId, invitationId]);
+
+  useEffect(() => {
+  if (!offers || !offers.length) {
+    setActiveOfferId(null);
+    return;
+  }
+
+  // încercăm să alegem o ofertă „principală”: ACCEPTED/SELECTED/ASSIGNED, altfel prima
+  const preferred = offers.find((o) =>
+    ["ACCEPTED", "SELECTED", "ASSIGNED"].includes(String(o.status || "").toUpperCase())
+  );
+
+  setActiveOfferId((preferred || offers[0]).id);
+}, [offers]);
 
   const handleBackToEvent = () => {
     if (!eventId || !locale) return;
@@ -97,7 +115,9 @@ export default function ClientEventRequestDetailPage() {
   if (!invitation) {
     return (
       <Box sx={{ p: 2 }}>
-        <Typography>Request (invitație) inexistent(ă) sau inaccesibil(ă).</Typography>
+        <Typography>
+          Request (invitație) inexistent(ă) sau inaccesibil(ă).
+        </Typography>
       </Box>
     );
   }
@@ -110,6 +130,22 @@ export default function ClientEventRequestDetailPage() {
         offers={offers}
         onBackToEvent={handleBackToEvent}
       />
+            {activeOfferId ? (
+        <MessagesThread
+          context={{ eventId, offerId: activeOfferId }}
+          fetchMessages={() => getOfferMessages(activeOfferId)}
+          sendMessage={(body) => postOfferMessage(activeOfferId, body)}
+          title="Mesaje ofertă"
+        />
+      ) : (
+        <MessagesThread
+          context={{ eventId }}
+          fetchMessages={() => getEventMessages(eventId)}
+          sendMessage={(body) => postEventMessage(eventId, body)}
+          title="Mesaje eveniment"
+        />
+      )}
+
     </Box>
   );
 }

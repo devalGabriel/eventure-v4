@@ -120,4 +120,45 @@ module.exports.registerConsumers = async function registerConsumers(fastify) {
       }
     })();
   }
+    // ---- MESAJ NOU ÎN THREAD DE EVENIMENT / OFERTĂ ----
+  // Ascultăm topic-ul pentru mesaje create, în cazul în care vrem să derivăm notificări
+  // suplimentare din NATS. În prezent, events-service trimite notificările principale
+  // prin HTTP (/internal/notify), deci aici doar pregătim mecanismul pentru orice
+  // extensii viitoare (ex: push, log suplimentar etc.).
+  (function subscribeEventMessages() {
+    const subj = process.env.NATS_TOPIC_EVENT_MESSAGE || 'message.created';
+    const sub = nc.subscribe(subj);
+    (async () => {
+      for await (const m of sub) {
+        try {
+          const payload = JSON.parse(m.data?.toString() || '{}');
+          const { eventId, offerId, messageId, by, recipients } = payload || {};
+
+          // Dacă nu avem destinatari expliciți, nu creăm notificări aici
+          // (events-service a trimis deja notificările esențiale via HTTP).
+          if (!Array.isArray(recipients) || !recipients.length) {
+            fastify.log.info(
+              { eventId, offerId, messageId },
+              'EVENT_MESSAGE from NATS (fără recipients) – skip notificări duplicate'
+            );
+            continue;
+          }
+
+          // Exemplu de creare de notificări suplimentare (dacă vrei să folosești acest canal):
+          for (const authUserId of recipients) {
+            await createNotification({
+              authUserId,
+              title: 'Mesaj nou la eveniment',
+              body: 'Ai un mesaj nou într-un thread de eveniment.',
+              data: { eventId, offerId: offerId || null, messageId },
+              type: 'EVENT_MESSAGE',
+            });
+          }
+        } catch (err) {
+          fastify.log.error({ err }, 'Failed to process EVENT_MESSAGE (message.created)');
+        }
+      }
+    })();
+  })();
+
 };

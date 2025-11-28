@@ -132,7 +132,8 @@ model EventInvitation {
 model EventMessage {
   id        String   @id @default(cuid())
   eventId   String
-  offerId   String?          // <— nou: mesaj legat de o ofertă anume (negocieri)
+  offerId   String?
+  context   EventMessageContext @default(EVENT)
   authorId  String
   body      String   @db.Text
   createdAt DateTime @default(now())
@@ -141,7 +142,8 @@ model EventMessage {
 
   @@index([eventId])
   @@index([offerId])
-} 
+    @@index([context])
+}
 
 model EventProviderAssignment {
   id              String           @id @default(cuid())
@@ -277,6 +279,11 @@ model GroupMember {
 enum GroupStatus {
   ACTIVE
   INACTIVE
+}
+
+enum EventMessageContext {
+  EVENT
+  OFFER
 }
 
 model ProviderProfile {

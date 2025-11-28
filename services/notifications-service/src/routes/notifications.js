@@ -2,7 +2,10 @@
 module.exports = async function routes(fastify) {
   const { prisma } = fastify;
 
-  // GET /v1/notifications?authUserId=&status=&limit=
+  /**
+   * GET /v1/notifications?authUserId=&status=&limit=
+   * Lista notificărilor pentru un utilizator (folosită de UI).
+   */
   fastify.get('/v1/notifications', async (req) => {
     const authUserId =
       req.query.authUserId ||
@@ -14,10 +17,13 @@ module.exports = async function routes(fastify) {
 
     const where = { authUserId: String(authUserId) };
     if (req.query.status) {
-      where.status = String(req.query.status);
+      where.status = String(req.query.status).toUpperCase();
     }
 
-    const limit = Math.min(parseInt(req.query.limit) || 50, 100);
+    const limit =
+      Number(req.query.limit) > 0 && Number(req.query.limit) <= 100
+        ? Number(req.query.limit)
+        : 50;
 
     const items = await prisma.notification.findMany({
       where,
@@ -25,65 +31,32 @@ module.exports = async function routes(fastify) {
       take: limit,
     });
 
-    return items.map((n) => ({
-      id: n.id,
-      title: n.title,
-      message: n.body, // body -> message pentru UI
-      read: n.status === 'READ' || !!n.readAt,
-      readAt: n.readAt,
-      createdAt: n.createdAt,
-      meta: n.data || null,
-      type: n.type || null,
-    }));
+    return items;
   });
 
-  // PATCH /v1/notifications/:id/read
-  fastify.patch('/v1/notifications/:id/read', async (req) => {
-    console.log('Received request to mark notification as read >>>>>>>>> HIT <<<<<<<<<<<<<');
-    const { id } = await req.params;
-    console.log('Marking notification as read, id:', id);
-    console.log('Request headers:', req.headers);
-    console.log('Request body:', req.body);
-    try {
-      const updated = await prisma.notification.update({
-      where: { id },
-      data: { status: 'READ', readAt: new Date() },
-    });
-
-    return {
-      id: updated.id,
-      title: updated.title,
-      message: updated.body,
-      read: true,
-      readAt: updated.readAt,
-      createdAt: updated.createdAt,
-      meta: updated.data || null,
-      type: updated.type || null,
-    };
-    } catch (error) {
-      console.error('Error marking notification as read:', error);
-      return { error: 'Failed to mark notification as read' };
-    }
-  });
-
-  // POST /v1/notifications/mark-read
-  // body: { authUserId?: string, all?: boolean, ids?: string[] }
+  /**
+   * POST /v1/notifications/mark-read
+   * Body:
+   *  - authUserId / userId (obligatoriu)
+   *  - ids?: string[]
+   *  - all?: boolean
+   *
+   * Marcare clasică ca "citit" după id sau pentru toate.
+   */
   fastify.post('/v1/notifications/mark-read', async (req) => {
-    const { authUserId, all, ids } = req.body || {};
-    const target =
-      authUserId ||
+    const authUserId =
+      req.body.authUserId ||
+      req.body.userId ||
       req.headers['x-auth-user-id'] ||
       req.headers['x-user-id'];
 
-    if (!target) {
-      return { updated: 0 };
-    }
+    if (!authUserId) return { updated: 0 };
 
-    const where = { authUserId: String(target) };
+    const where = { authUserId: String(authUserId) };
+    const { ids, all } = req.body || {};
+
     let result;
-
     if (all) {
-      // 🧠 marchez toate notificările userului ca "READ"
       result = await prisma.notification.updateMany({
         where,
         data: { status: 'READ', readAt: new Date() },
@@ -96,6 +69,69 @@ module.exports = async function routes(fastify) {
     } else {
       return { updated: 0 };
     }
+
+    return { updated: result.count };
+  });
+
+  /**
+   * POST /v1/notifications/mark-read-context
+   * Body:
+   *  - authUserId / userId (obligatoriu)
+   *  - context:
+   *      - eventId?: string
+   *      - offerId?: string
+   *
+   * Folosit de UI mesagerie pentru a marca toate notificările
+   * EVENT_MESSAGE legate de un anumit eveniment/ofertă ca fiind citite
+   * în momentul în care utilizatorul deschide thread-ul.
+   */
+  fastify.post('/v1/notifications/mark-read-context', async (req, reply) => {
+    const authUserId =
+      req.body.authUserId ||
+      req.body.userId ||
+      req.headers['x-auth-user-id'] ||
+      req.headers['x-user-id'];
+
+    if (!authUserId) return { updated: 0 };
+
+    const { context } = req.body || {};
+    const eventId = context?.eventId;
+    const offerId = context?.offerId;
+
+    if (!eventId && !offerId) {
+      return reply.badRequest('Missing eventId/offerId context');
+    }
+
+    const and = [];
+
+    if (eventId) {
+      and.push({
+        data: {
+          path: ['eventId'],
+          equals: eventId,
+        },
+      });
+    }
+
+    if (offerId) {
+      and.push({
+        data: {
+          path: ['offerId'],
+          equals: offerId,
+        },
+      });
+    }
+
+    const where = {
+      authUserId: String(authUserId),
+      type: 'EVENT_MESSAGE',
+      ...(and.length ? { AND: and } : {}),
+    };
+
+    const result = await prisma.notification.updateMany({
+      where,
+      data: { status: 'READ', readAt: new Date() },
+    });
 
     return { updated: result.count };
   });

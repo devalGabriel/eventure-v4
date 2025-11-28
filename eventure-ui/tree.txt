@@ -1,0 +1,650 @@
+Folder PATH listing for volume Store
+Volume serial number is 904D-E921
+D:\PROGRAMARE\NEXTJS15\EVENTURE-V4\EVENTURE-UI\SRC
++---app
+¦   +---(auth)
+¦   ¦   +---session-updated
+¦   ¦           page.jsx
+¦   ¦           
+¦   +---api
+¦   ¦   +---admin
+¦   ¦   ¦   +---clients
+¦   ¦   ¦   ¦       route.js
+¦   ¦   ¦   ¦       
+¦   ¦   ¦   +---event-templates
+¦   ¦   ¦   ¦   ¦   route.js
+¦   ¦   ¦   ¦   ¦   
+¦   ¦   ¦   ¦   +---[id]
+¦   ¦   ¦   ¦           route.js
+¦   ¦   ¦   ¦           
+¦   ¦   ¦   +---event-types
+¦   ¦   ¦   ¦   ¦   route.js
+¦   ¦   ¦   ¦   ¦   
+¦   ¦   ¦   ¦   +---[type]
+¦   ¦   ¦   ¦           route.js
+¦   ¦   ¦   ¦           
+¦   ¦   ¦   +---events
+¦   ¦   ¦   ¦   +---pre-contract
+¦   ¦   ¦   ¦           route.js
+¦   ¦   ¦   ¦           
+¦   ¦   ¦   +---provider-applications
+¦   ¦   ¦   ¦   ¦   route.js
+¦   ¦   ¦   ¦   ¦   
+¦   ¦   ¦   ¦   +---[id]
+¦   ¦   ¦   ¦       +---decision
+¦   ¦   ¦   ¦               route.js
+¦   ¦   ¦   ¦               
+¦   ¦   ¦   +---providers
+¦   ¦   ¦   ¦   +---catalog
+¦   ¦   ¦   ¦   ¦   +---categories
+¦   ¦   ¦   ¦   ¦   ¦   ¦   route.js
+¦   ¦   ¦   ¦   ¦   ¦   ¦   
+¦   ¦   ¦   ¦   ¦   ¦   +---[id]
+¦   ¦   ¦   ¦   ¦   ¦           route.js
+¦   ¦   ¦   ¦   ¦   ¦           
+¦   ¦   ¦   ¦   ¦   +---subcategories
+¦   ¦   ¦   ¦   ¦   ¦   ¦   route.js
+¦   ¦   ¦   ¦   ¦   ¦   ¦   
+¦   ¦   ¦   ¦   ¦   ¦   +---[id]
+¦   ¦   ¦   ¦   ¦   ¦           route.js
+¦   ¦   ¦   ¦   ¦   ¦           
+¦   ¦   ¦   ¦   ¦   +---tags
+¦   ¦   ¦   ¦   ¦       ¦   route.js
+¦   ¦   ¦   ¦   ¦       ¦   
+¦   ¦   ¦   ¦   ¦       +---[id]
+¦   ¦   ¦   ¦   ¦               route.js
+¦   ¦   ¦   ¦   ¦               
+¦   ¦   ¦   ¦   +---[id]
+¦   ¦   ¦   ¦       +---admin-notes
+¦   ¦   ¦   ¦       ¦       route.js
+¦   ¦   ¦   ¦       ¦       
+¦   ¦   ¦   ¦       +---approve
+¦   ¦   ¦   ¦       ¦       route.js
+¦   ¦   ¦   ¦       ¦       
+¦   ¦   ¦   ¦       +---reject
+¦   ¦   ¦   ¦               route.js
+¦   ¦   ¦   ¦               
+¦   ¦   ¦   +---users
+¦   ¦   ¦       ¦   route.js
+¦   ¦   ¦       ¦   
+¦   ¦   ¦       +---[id]
+¦   ¦   ¦           ¦   route.js
+¦   ¦   ¦           ¦   
+¦   ¦   ¦           +---audit
+¦   ¦   ¦           ¦       route.js
+¦   ¦   ¦           ¦       
+¦   ¦   ¦           +---byAuthId
+¦   ¦   ¦           ¦       route.js
+¦   ¦   ¦           ¦       
+¦   ¦   ¦           +---force-logout
+¦   ¦   ¦           ¦       route.js
+¦   ¦   ¦           ¦       
+¦   ¦   ¦           +---roles
+¦   ¦   ¦                   route.js
+¦   ¦   ¦                   
+¦   ¦   +---assignments
+¦   ¦   ¦   +---[id]
+¦   ¦   ¦           route.js
+¦   ¦   ¦           
+¦   ¦   +---auth
+¦   ¦   ¦   +---me
+¦   ¦   ¦           route.js
+¦   ¦   ¦           
+¦   ¦   +---client
+¦   ¦   ¦   +---offers
+¦   ¦   ¦   ¦       route.js
+¦   ¦   ¦   ¦       
+¦   ¦   ¦   +---packages
+¦   ¦   ¦           route.js
+¦   ¦   ¦           
+¦   ¦   +---events
+¦   ¦   ¦   ¦   route.js
+¦   ¦   ¦   ¦   
+¦   ¦   ¦   +---stats
+¦   ¦   ¦   ¦       route.js
+¦   ¦   ¦   ¦       
+¦   ¦   ¦   +---[id]
+¦   ¦   ¦       ¦   route.js
+¦   ¦   ¦       ¦   
+¦   ¦   ¦       +---assignments
+¦   ¦   ¦       ¦       route.js
+¦   ¦   ¦       ¦       
+¦   ¦   ¦       +---attachments
+¦   ¦   ¦       ¦       route.js
+¦   ¦   ¦       ¦       
+¦   ¦   ¦       +---available-status
+¦   ¦   ¦       ¦       route.js
+¦   ¦   ¦       ¦       
+¦   ¦   ¦       +---brief
+¦   ¦   ¦       ¦       route.js
+¦   ¦   ¦       ¦       
+¦   ¦   ¦       +---brief-template
+¦   ¦   ¦       ¦       route.js
+¦   ¦   ¦       ¦       
+¦   ¦   ¦       +---budget-estimate
+¦   ¦   ¦       ¦       route.js
+¦   ¦   ¦       ¦       
+¦   ¦   ¦       +---invitations
+¦   ¦   ¦       ¦   ¦   route.js
+¦   ¦   ¦       ¦   ¦   
+¦   ¦   ¦       ¦   +---bulk
+¦   ¦   ¦       ¦   ¦       route.js
+¦   ¦   ¦       ¦   ¦       
+¦   ¦   ¦       ¦   +---[invId]
+¦   ¦   ¦       ¦       ¦   route.js
+¦   ¦   ¦       ¦       ¦   
+¦   ¦   ¦       ¦       +---offers
+¦   ¦   ¦       ¦               route.js
+¦   ¦   ¦       ¦               
+¦   ¦   ¦       +---messages
+¦   ¦   ¦       ¦       route.js
+¦   ¦   ¦       ¦       
+¦   ¦   ¦       +---needs
+¦   ¦   ¦       ¦       route.js
+¦   ¦   ¦       ¦       
+¦   ¦   ¦       +---offers
+¦   ¦   ¦       ¦   ¦   route.js
+¦   ¦   ¦       ¦   ¦   
+¦   ¦   ¦       ¦   +---[offerId]
+¦   ¦   ¦       ¦           route.js
+¦   ¦   ¦       ¦           
+¦   ¦   ¦       +---programs
+¦   ¦   ¦       ¦       route.js
+¦   ¦   ¦       ¦       
+¦   ¦   ¦       +---tasks
+¦   ¦   ¦           ¦   route.js
+¦   ¦   ¦           ¦   
+¦   ¦   ¦           +---generate
+¦   ¦   ¦           ¦       route.js
+¦   ¦   ¦           ¦       
+¦   ¦   ¦           +---[taskId]
+¦   ¦   ¦                   route.js
+¦   ¦   ¦                   
+¦   ¦   +---groups
+¦   ¦   ¦   ¦   route.js
+¦   ¦   ¦   ¦   
+¦   ¦   ¦   +---[id]
+¦   ¦   ¦       ¦   route.js
+¦   ¦   ¦       ¦   
+¦   ¦   ¦       +---members
+¦   ¦   ¦           ¦   route.js
+¦   ¦   ¦           ¦   
+¦   ¦   ¦           +---[memberId]
+¦   ¦   ¦                   route.js
+¦   ¦   ¦                   
+¦   ¦   +---invitations
+¦   ¦   ¦   +---[id]
+¦   ¦   ¦       ¦   route.js
+¦   ¦   ¦       ¦   
+¦   ¦   ¦       +---decision
+¦   ¦   ¦               route.js
+¦   ¦   ¦               
+¦   ¦   +---mock-auth
+¦   ¦   ¦   +---forgot-password
+¦   ¦   ¦   ¦       route.js
+¦   ¦   ¦   ¦       
+¦   ¦   ¦   +---sign-in
+¦   ¦   ¦   ¦       route.js
+¦   ¦   ¦   ¦       
+¦   ¦   ¦   +---sign-up
+¦   ¦   ¦   ¦       route.js
+¦   ¦   ¦   ¦       
+¦   ¦   ¦   +---users
+¦   ¦   ¦       +---change-password
+¦   ¦   ¦       ¦       route.js
+¦   ¦   ¦       ¦       
+¦   ¦   ¦       +---me
+¦   ¦   ¦           ¦   route.js
+¦   ¦   ¦           ¦   
+¦   ¦   ¦           +---avatar
+¦   ¦   ¦                   route.js
+¦   ¦   ¦                   
+¦   ¦   +---modules
+¦   ¦   ¦   ¦   route.js
+¦   ¦   ¦   ¦   
+¦   ¦   ¦   +---assets
+¦   ¦   ¦   ¦   +---[...path]
+¦   ¦   ¦   ¦           route.js
+¦   ¦   ¦   ¦           
+¦   ¦   ¦   +---by-slug
+¦   ¦   ¦   ¦   +---[slug]
+¦   ¦   ¦   ¦           route.js
+¦   ¦   ¦   ¦           
+¦   ¦   ¦   +---install
+¦   ¦   ¦   ¦       route.js
+¦   ¦   ¦   ¦       
+¦   ¦   ¦   +---slug
+¦   ¦   ¦       +---[slug]
+¦   ¦   ¦           ¦   route.js
+¦   ¦   ¦           ¦   
+¦   ¦   ¦           +---config
+¦   ¦   ¦           ¦       route.js
+¦   ¦   ¦           ¦       
+¦   ¦   ¦           +---disable
+¦   ¦   ¦           ¦       route.js
+¦   ¦   ¦           ¦       
+¦   ¦   ¦           +---enable
+¦   ¦   ¦                   route.js
+¦   ¦   ¦                   
+¦   ¦   +---notifications
+¦   ¦   ¦   +---history
+¦   ¦   ¦   ¦       route.js
+¦   ¦   ¦   ¦       
+¦   ¦   ¦   +---mark-read
+¦   ¦   ¦   ¦   ¦   route.js
+¦   ¦   ¦   ¦   ¦   
+¦   ¦   ¦   ¦   +---[id]
+¦   ¦   ¦   ¦           route.js
+¦   ¦   ¦   ¦           
+¦   ¦   ¦   +---publish
+¦   ¦   ¦   ¦       route.js
+¦   ¦   ¦   ¦       
+¦   ¦   ¦   +---stream
+¦   ¦   ¦           route.js
+¦   ¦   ¦           
+¦   ¦   +---offers
+¦   ¦   ¦   ¦   route.js
+¦   ¦   ¦   ¦   
+¦   ¦   ¦   +---[id]
+¦   ¦   ¦       ¦   route.js
+¦   ¦   ¦       ¦   
+¦   ¦   ¦       +---decision
+¦   ¦   ¦       ¦       route.js
+¦   ¦   ¦       ¦       
+¦   ¦   ¦       +---messages
+¦   ¦   ¦               route.js
+¦   ¦   ¦               
+¦   ¦   +---programs
+¦   ¦   ¦   +---[id]
+¦   ¦   ¦           route.js
+¦   ¦   ¦           
+¦   ¦   +---providers
+¦   ¦       +---admin
+¦   ¦       ¦   ¦   route.js
+¦   ¦       ¦   ¦   
+¦   ¦       ¦   +---catalog
+¦   ¦       ¦   ¦   +---categories
+¦   ¦       ¦   ¦       ¦   route.js
+¦   ¦       ¦   ¦       ¦   
+¦   ¦       ¦   ¦       +---subcategories
+¦   ¦       ¦   ¦       ¦       route.js
+¦   ¦       ¦   ¦       ¦       
+¦   ¦       ¦   ¦       +---[id]
+¦   ¦       ¦   ¦               route.js
+¦   ¦       ¦   ¦               
+¦   ¦       ¦   +---[id]
+¦   ¦       ¦           route.js
+¦   ¦       ¦           
+¦   ¦       +---apply
+¦   ¦       ¦       route.js
+¦   ¦       ¦       
+¦   ¦       +---catalog
+¦   ¦       ¦   ¦   route.js
+¦   ¦       ¦   ¦   
+¦   ¦       ¦   +---categories
+¦   ¦       ¦           route.js
+¦   ¦       ¦           
+¦   ¦       +---me
+¦   ¦           ¦   route.js
+¦   ¦           ¦   
+¦   ¦           +---assignments
+¦   ¦           ¦       route.js
+¦   ¦           ¦       
+¦   ¦           +---availability
+¦   ¦           ¦       route.js
+¦   ¦           ¦       
+¦   ¦           +---calendar
+¦   ¦           ¦       route.js
+¦   ¦           ¦       
+¦   ¦           +---group-members
+¦   ¦           ¦   +---search
+¦   ¦           ¦   ¦       route.js
+¦   ¦           ¦   ¦       
+¦   ¦           ¦   +---services
+¦   ¦           ¦           route.js
+¦   ¦           ¦           
+¦   ¦           +---groups
+¦   ¦           ¦   ¦   route.js
+¦   ¦           ¦   ¦   
+¦   ¦           ¦   +---memberships
+¦   ¦           ¦   ¦   +---[id]
+¦   ¦           ¦   ¦       +---leave
+¦   ¦           ¦   ¦               route.js
+¦   ¦           ¦   ¦               
+¦   ¦           ¦   +---[id]
+¦   ¦           ¦           route.js
+¦   ¦           ¦           
+¦   ¦           +---invitations
+¦   ¦           ¦       route.js
+¦   ¦           ¦       
+¦   ¦           +---offers
+¦   ¦           ¦   ¦   route.js
+¦   ¦           ¦   ¦   
+¦   ¦           ¦   +---[id]
+¦   ¦           ¦           route.js
+¦   ¦           ¦           
+¦   ¦           +---packages
+¦   ¦           ¦   ¦   route.js
+¦   ¦           ¦   ¦   
+¦   ¦           ¦   +---[id]
+¦   ¦           ¦           route.js
+¦   ¦           ¦           
+¦   ¦           +---profile
+¦   ¦               ¦   route.js
+¦   ¦               ¦   
+¦   ¦               +---[id]
+¦   ¦                       route.js
+¦   ¦                       
+¦   +---[locale]
+¦       ¦   error.jsx
+¦       ¦   globals.scss
+¦       ¦   layout.jsx
+¦       ¦   not-found.jsx
+¦       ¦   
+¦       +---(protected)
+¦       ¦   ¦   error.jsx
+¦       ¦   ¦   layout.jsx
+¦       ¦   ¦   loading.jsx
+¦       ¦   ¦   
+¦       ¦   +---admin
+¦       ¦   ¦   +---modules
+¦       ¦   ¦   ¦   ¦   page.jsx
+¦       ¦   ¦   ¦   ¦   
+¦       ¦   ¦   ¦   +---host
+¦       ¦   ¦   ¦       +---[slug]
+¦       ¦   ¦   ¦               page.jsx
+¦       ¦   ¦   ¦               
+¦       ¦   ¦   +---providers
+¦       ¦   ¦   ¦   ¦   page.jsx
+¦       ¦   ¦   ¦   ¦   
+¦       ¦   ¦   ¦   +---applications
+¦       ¦   ¦   ¦   ¦       page.jsx
+¦       ¦   ¦   ¦   ¦       
+¦       ¦   ¦   ¦   +---[id]
+¦       ¦   ¦   ¦           page.jsx
+¦       ¦   ¦   ¦           
+¦       ¦   ¦   +---users
+¦       ¦   ¦       ¦   page.jsx
+¦       ¦   ¦       ¦   
+¦       ¦   ¦       +---[id]
+¦       ¦   ¦               page.jsx
+¦       ¦   ¦               
+¦       ¦   +---client
+¦       ¦   ¦   +---modules
+¦       ¦   ¦       +---host
+¦       ¦   ¦           +---[slug]
+¦       ¦   ¦                   page.jsx
+¦       ¦   ¦                   
+¦       ¦   +---dashboard
+¦       ¦   ¦   ¦   page.jsx
+¦       ¦   ¦   ¦   
+¦       ¦   ¦   +---admin
+¦       ¦   ¦   ¦   +---clients
+¦       ¦   ¦   ¦   ¦       page.jsx
+¦       ¦   ¦   ¦   ¦       
+¦       ¦   ¦   ¦   +---event-templates
+¦       ¦   ¦   ¦   ¦       page.jsx
+¦       ¦   ¦   ¦   ¦       
+¦       ¦   ¦   ¦   +---events
+¦       ¦   ¦   ¦   ¦   ¦   page.jsx
+¦       ¦   ¦   ¦   ¦   ¦   
+¦       ¦   ¦   ¦   ¦   +---brief-templates
+¦       ¦   ¦   ¦   ¦   ¦       page.jsx
+¦       ¦   ¦   ¦   ¦   ¦       
+¦       ¦   ¦   ¦   ¦   +---pre-contracts
+¦       ¦   ¦   ¦   ¦           page.jsx
+¦       ¦   ¦   ¦   ¦           
+¦       ¦   ¦   ¦   +---providers
+¦       ¦   ¦   ¦       +---catalog
+¦       ¦   ¦   ¦               page.jsx
+¦       ¦   ¦   ¦               
+¦       ¦   ¦   +---client
+¦       ¦   ¦   ¦   +---events
+¦       ¦   ¦   ¦   ¦   +---[eventId]
+¦       ¦   ¦   ¦   ¦       +---requests
+¦       ¦   ¦   ¦   ¦           +---[invitationId]
+¦       ¦   ¦   ¦   ¦                   page.jsx
+¦       ¦   ¦   ¦   ¦                   
+¦       ¦   ¦   ¦   +---offers
+¦       ¦   ¦   ¦           page.jsx
+¦       ¦   ¦   ¦           
+¦       ¦   ¦   +---provider
+¦       ¦   ¦       ¦   layout.jsx
+¦       ¦   ¦       ¦   page.jsx
+¦       ¦   ¦       ¦   
+¦       ¦   ¦       +---availability
+¦       ¦   ¦       ¦       page.jsx
+¦       ¦   ¦       ¦       
+¦       ¦   ¦       +---groups
+¦       ¦   ¦       ¦   ¦   page.jsx
+¦       ¦   ¦       ¦   ¦   
+¦       ¦   ¦       ¦   +---[groupId]
+¦       ¦   ¦       ¦       ¦   page.jsx
+¦       ¦   ¦       ¦       ¦   
+¦       ¦   ¦       ¦       +---edit
+¦       ¦   ¦       ¦               page.jsx
+¦       ¦   ¦       ¦               
+¦       ¦   ¦       +---invitations
+¦       ¦   ¦       ¦   ¦   page.jsx
+¦       ¦   ¦       ¦   ¦   
+¦       ¦   ¦       ¦   +---[id]
+¦       ¦   ¦       ¦           page.jsx
+¦       ¦   ¦       ¦           
+¦       ¦   ¦       +---profile
+¦       ¦   ¦       ¦       page.jsx
+¦       ¦   ¦       ¦       
+¦       ¦   ¦       +---services
+¦       ¦   ¦               page.jsx
+¦       ¦   ¦               
+¦       ¦   +---events
+¦       ¦   ¦   ¦   page.jsx
+¦       ¦   ¦   ¦   
+¦       ¦   ¦   +---new
+¦       ¦   ¦   ¦       page.jsx
+¦       ¦   ¦   ¦       
+¦       ¦   ¦   +---[id]
+¦       ¦   ¦       ¦   page.jsx
+¦       ¦   ¦       ¦   
+¦       ¦   ¦       +---invitations
+¦       ¦   ¦       ¦       page.jsx
+¦       ¦   ¦       ¦       
+¦       ¦   ¦       +---program
+¦       ¦   ¦               page.jsx
+¦       ¦   ¦               
+¦       ¦   +---forbidden
+¦       ¦   ¦       page.jsx
+¦       ¦   ¦       
+¦       ¦   +---offers
+¦       ¦   ¦   ¦   page.jsx
+¦       ¦   ¦   ¦   
+¦       ¦   ¦   +---groups
+¦       ¦   ¦       ¦   page.jsx
+¦       ¦   ¦       ¦   
+¦       ¦   ¦       +---[id]
+¦       ¦   ¦               page.jsx
+¦       ¦   ¦               
+¦       ¦   +---profile
+¦       ¦   ¦   ¦   page.jsx
+¦       ¦   ¦   ¦   
+¦       ¦   ¦   +---provider
+¦       ¦   ¦       +---apply
+¦       ¦   ¦               page.jsx
+¦       ¦   ¦               
+¦       ¦   +---provider
+¦       ¦       +---profile
+¦       ¦               page.jsx
+¦       ¦               
+¦       +---(public)
+¦           ¦   error.jsx
+¦           ¦   loading.jsx
+¦           ¦   page.jsx
+¦           ¦   
+¦           +---forgot
+¦           ¦       page.jsx
+¦           ¦       
+¦           +---login
+¦           ¦       page.jsx
+¦           ¦       
+¦           +---register
+¦                   page.jsx
+¦                   
++---components
+¦   +---admin
+¦   ¦   +---cards
+¦   ¦   ¦       EventsStatsCard.jsx
+¦   ¦   ¦       ProviderStatsCard.jsx
+¦   ¦   ¦       
+¦   ¦   +---providers
+¦   ¦   ¦       AdminProviderDetail.jsx
+¦   ¦   ¦       AdminProvidersList.jsx
+¦   ¦   ¦       RejectDialog.jsx
+¦   ¦   ¦       
+¦   ¦   +---users
+¦   ¦           AdminUserDetail.jsx
+¦   ¦           AdminUsersList.jsx
+¦   ¦           
+¦   +---ai
+¦   ¦       AiSuggestionsCard.jsx
+¦   ¦       
+¦   +---auth
+¦   ¦       AfterLoginRoles.jsx
+¦   ¦       ClientRoleGate.jsx
+¦   ¦       RolesScript.jsx
+¦   ¦       
+¦   +---dashboard
+¦   ¦       AdminKpiCard.jsx
+¦   ¦       ClientEventsWidget.jsx
+¦   ¦       ProviderQuickActions.jsx
+¦   ¦       
+¦   +---design
+¦   ¦       Card.jsx
+¦   ¦       EmptyState.jsx
+¦   ¦       PageHeader.jsx
+¦   ¦       Section.jsx
+¦   ¦       
+¦   +---events
+¦   ¦       BriefTemplatePanel.jsx
+¦   ¦       BudgetEstimatePanel.jsx
+¦   ¦       EventInvitationsList.jsx
+¦   ¦       EventInvitationsOffersSection.jsx
+¦   ¦       EventInviteProvidersDialog.jsx
+¦   ¦       EventOffersList.jsx
+¦   ¦       EventRequestDetail.jsx
+¦   ¦       eventStatusHelpers.js
+¦   ¦       
+¦   +---forms
+¦   ¦       Fields.js
+¦   ¦       Form.js
+¦   ¦       FormSection.js
+¦   ¦       SubmitButton.js
+¦   ¦       
+¦   +---media
+¦   ¦       AvatarCropper.jsx
+¦   ¦       
+¦   +---notifications
+¦   ¦       NotificationItem.jsx
+¦   ¦       
+¦   +---profile
+¦   ¦       AvatarClient.jsx
+¦   ¦       PasswordForm.jsx
+¦   ¦       ProfileForm.jsx
+¦   ¦       
+¦   +---provider
+¦   ¦   ¦   ProviderAvailabilitySection.jsx
+¦   ¦   ¦   ProviderGroupsSection.jsx
+¦   ¦   ¦   ProviderOffersPackagesSection.jsx
+¦   ¦   ¦   ProviderProfileForm.jsx
+¦   ¦   ¦   
+¦   ¦   +---invitations
+¦   ¦           OfferMessagesSection.jsx
+¦   ¦           ProviderInvitationDetailPage.jsx
+¦   ¦           ProviderInvitationHeader.jsx
+¦   ¦           ProviderOfferForm.jsx
+¦   ¦           
+¦   +---providers
+¦   ¦       AppBootstrap.jsx
+¦   ¦       ColorModeProvider.jsx
+¦   ¦       NotificationProvider.jsx
+¦   ¦       
+¦   +---ui
+¦       ¦   AppFooter.jsx
+¦       ¦   AppHeader.jsx
+¦       ¦   AppShell.jsx
+¦       ¦   AuthForm.jsx
+¦       ¦   Breadcrumbs.jsx
+¦       ¦   LanguageSwitcher.jsx
+¦       ¦   NotificationsBell.jsx
+¦       ¦   NotifyButton.jsx
+¦       ¦   ProtectedClient.jsx
+¦       ¦   SettingsMenu.jsx
+¦       ¦   Sidebar.jsx
+¦       ¦   Toolbar.jsx
+¦       ¦   ui.scss
+¦       ¦   
+¦       +---skeletons
+¦               FormSkeleton.jsx
+¦               ListSkeleton.jsx
+¦               
++---config
+¦       providerReasons.js
+¦       
++---i18n
+¦   ¦   request.js
+¦   ¦   
+¦   +---messages
+¦           en.json
+¦           ro.json
+¦           
++---lib
+¦   ¦   api.js
+¦   ¦   auth.js
+¦   ¦   extractLocaleAndPath.js
+¦   ¦   flags.js
+¦   ¦   i18n.js
+¦   ¦   monitor.js
+¦   ¦   nats-ui.js
+¦   ¦   notif-bus.js
+¦   ¦   notificationRoutes.js
+¦   ¦   notificationsApi.js
+¦   ¦   server-auth.js
+¦   ¦   services.js
+¦   ¦   theme.js
+¦   ¦   upload.js
+¦   ¦   url.ts
+¦   ¦   utils.js
+¦   ¦   validation.js
+¦   ¦   
+¦   +---api
+¦   ¦       eventsClient.js
+¦   ¦       providerCatalogClient.js
+¦   ¦       providersClient.js
+¦   ¦       usersClient.js
+¦   ¦       
+¦   +---auth
+¦   ¦       roleGuards.js
+¦   ¦       
+¦   +---bff
+¦   ¦       authToken.js
+¦   ¦       proxy.js
+¦   ¦       response.js
+¦   ¦       
+¦   +---contracts
+¦   ¦       auth.contract.js
+¦   ¦       users.contract.js
+¦   ¦       
+¦   +---http
+¦   ¦       fetchServer.js
+¦   ¦       query.js
+¦   ¦       
+¦   +---server
+¦           providersProxy.js
+¦           usersProxy.js
+¦           
++---styles
+        design.scss
+        form-layout.scss
+        forms.scss
+        landing.scss
+        _mixins.scss
+        _variables.scss
+        
