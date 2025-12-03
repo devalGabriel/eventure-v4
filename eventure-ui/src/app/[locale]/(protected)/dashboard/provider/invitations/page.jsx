@@ -68,7 +68,9 @@ export default function ProviderInvitationsPage() {
           if (rg.ok) {
             const tg = await rg.text();
             const jg = tg ? JSON.parse(tg) : {};
-            const groupsArr = Array.isArray(jg.groups) ? jg.groups : jg.groups || [];
+            const groupsArr = Array.isArray(jg.groups)
+              ? jg.groups
+              : jg.groups || [];
             if (mounted) {
               setOwnedGroupIds(groupsArr.map((g) => g.id));
             }
@@ -209,6 +211,14 @@ export default function ProviderInvitationsPage() {
                         label="Ofertă trimisă"
                         size="small"
                         variant="outlined"
+                      />
+                    )}
+                    {inv.need && (
+                      <Chip
+                        label={inv.need.label}
+                        color="primary"
+                        size="small"
+                        sx={{ ml: 1 }}
                       />
                     )}
                     <Stack direction="row" spacing={1}>

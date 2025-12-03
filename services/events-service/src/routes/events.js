@@ -2,6 +2,8 @@
 import { prisma } from '../db.js';
 import { NotFound, BadRequest } from '../errors.js';
 import { ensureEventOwnerOrAdmin } from '../services/eventsAccess.js';
+import { recommendEventNeeds } from "../lib/aiNeeds.js";
+import { computeProviderMatchScore } from "../lib/providerMatch.js";
 
 // enum aflat în prisma: DRAFT, PLANNING, ACTIVE, COMPLETED, CANCELED
 const STATUS_TRANSITIONS = {
@@ -633,22 +635,21 @@ if (!userId) {
   });
 
     // --- NEEDS: GET /events/:id/needs ---
-  app.get('/events/:id/needs', async (req, res) => {
-    const reply = makeReply(res);
-    const user = await app.verifyAuth(req);
-    const { id } = req.params;
+  // app.get('/events/:id/needs', async (req, res) => {
+  //   const reply = makeReply(res);
+  //   const user = await app.verifyAuth(req);
+  //   const { id } = req.params;
 
-    const ev = await ensureEventOwnerOrAdmin(user, id, reply);
-    if (!ev) return;
+  //   const ev = await ensureEventOwnerOrAdmin(user, id, reply);
+  //   if (!ev) return;
 
-    const needs = await prisma.eventNeed.findMany({
-      where: { eventId: id },
-      orderBy: { createdAt: 'asc' },
-    });
+  //   const needs = await prisma.eventNeed.findMany({
+  //     where: { eventId: id },
+  //     orderBy: { createdAt: 'asc' },
+  //   });
 
-    return reply.send(needs);
-  });
-
+  //   return reply.send(needs);
+  // });
 
     // --- BRIEF: GET /events/:id/brief ---
   app.get('/events/:id/brief', async (req, res) => {
@@ -781,7 +782,18 @@ app.put('/events/:id/needs', async (req, res) => {
     .map((n) => {
       const label = (n.label || '').trim();
       if (!label) return null;
-
+      // offersDeadline: DateTime? (sau null)
+      let offersDeadline = null;
+      if (
+        n.offersDeadline !== undefined &&
+        n.offersDeadline !== null &&
+        String(n.offersDeadline).trim() !== ''
+      ) {
+        const d = new Date(n.offersDeadline);
+        if (!Number.isNaN(d.getTime())) {
+          offersDeadline = d;
+        }
+      }
       // budget
       let budget = null;
       if (
@@ -808,9 +820,22 @@ app.put('/events/:id/needs', async (req, res) => {
       const tagId = parseIntOrNull(n.tagId);
 
       const notes =
-        n.notes !== undefined && n.notes !== null && String(n.notes).trim() !== ''
+        n.notes !== undefined &&
+        n.notes !== null &&
+        String(n.notes).trim() !== ''
           ? String(n.notes).trim()
           : null;
+
+      // priority: LOW / MEDIUM / HIGH, default MEDIUM
+      const rawPriority =
+        typeof n.priority === 'string' ? n.priority.toUpperCase() : '';
+      let priority = 'MEDIUM';
+      if (rawPriority === 'LOW' || rawPriority === 'MEDIUM' || rawPriority === 'HIGH') {
+        priority = rawPriority;
+      }
+
+      // mustHave: boolean, default true
+      const mustHave = n.mustHave === undefined ? true : !!n.mustHave;
 
       return {
         eventId: id,
@@ -820,6 +845,9 @@ app.put('/events/:id/needs', async (req, res) => {
         subcategoryId,
         tagId,
         notes,
+        priority,
+        mustHave,
+        offersDeadline,
       };
     })
     .filter(Boolean);
@@ -840,6 +868,7 @@ app.put('/events/:id/needs', async (req, res) => {
 });
 
 
+  // --- EDITARE EVENIMENT: PATCH /events/:id ---
     app.patch('/events/:id', async (req, res) => {
     const reply = makeReply(res);
     const user = await app.verifyAuth(req);

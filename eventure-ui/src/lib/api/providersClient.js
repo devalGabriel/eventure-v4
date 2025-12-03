@@ -416,3 +416,12 @@ export async function leaveProviderGroupMembership(membershipId) {
 
   return res.json();
 }
+
+export async function getMatchedProvidersForNeed(need, brief) {
+  const r = await fetch(`/api/providers/internal/match-need`, {
+    method: "POST",
+    body: JSON.stringify({ need, eventBrief: brief }),
+  });
+  if (!r.ok) throw new Error("Failed match providers");
+  return r.json();
+}

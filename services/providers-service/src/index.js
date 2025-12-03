@@ -15,6 +15,9 @@ import meGroupsRoutes from './routes/me.groups.js';
 import { meGroupMembersRoutes } from './routes/me.groupMembers.js';
 import clientPackages from './routes/client.packages.js';
 import { publicCatalogRoutes } from './routes/publicCatalog.js';
+import providersRoutes from './routes/providers.js';
+import providersMatchRoutes from './routes/providersMatch.js';
+import internalMatchNeedRoutes from "./routes/internal.matchNeed.js";
 
 dotenv.config();
 
@@ -60,6 +63,11 @@ async function buildServer() {
   await fastify.register(meGroupMembersRoutes, {prefix: '/api'})
   await fastify.register(clientPackages, {prefix: '/api'})
   await fastify.register(publicCatalogRoutes), { prefix: '/api' };
+  await fastify.register(providersRoutes, {prefix: '/api'})
+  await fastify.register(providersMatchRoutes, {prefix: '/api'})
+await fastify.register(internalMatchNeedRoutes, {
+  prefix: "/v1/internal",
+});
 
   fastify.get('/', async () => ({
     service: 'providers-service',

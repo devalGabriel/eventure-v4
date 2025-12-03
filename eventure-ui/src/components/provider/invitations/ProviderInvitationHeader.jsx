@@ -1,7 +1,7 @@
 // src/components/provider/invitations/ProviderInvitationHeader.jsx
 "use client";
 
-import { Card, CardContent, Typography } from "@mui/material";
+import { Alert, Card, CardContent, Typography } from "@mui/material";
 
 export default function ProviderInvitationHeader({ invitation, event }) {
   const ev = event || {};
@@ -20,6 +20,15 @@ export default function ProviderInvitationHeader({ invitation, event }) {
         <Typography variant="body2" sx={{ mt: 1 }}>
           {invitation.message || invitation.note || "Fără mesaj"}
         </Typography>
+        {invitation.need && (
+  <Alert severity="info" sx={{ mb: 2 }}>
+    <b>Solicitare:</b> {invitation.need.label}<br />
+    {invitation.need.notes && <div><i>{invitation.need.notes}</i></div>}
+    {invitation.need.budgetPlanned && (
+      <div>Buget estimat: {invitation.need.budgetPlanned} lei</div>
+    )}
+  </Alert>
+)}
         {invitation.proposedBudget && (
           <Typography variant="body2" color="text.secondary">
             Buget propus de client: {invitation.proposedBudget}{" "}

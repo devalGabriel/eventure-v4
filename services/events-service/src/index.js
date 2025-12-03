@@ -21,9 +21,16 @@ import { eventTypesRoutes } from './routes/eventTypes.js';
 import { eventBriefBudgetRoutes } from './routes/eventBriefBudget.js';
 import { assignmentsRoutes } from './routes/assignments.js';
 import { adminPreContractRoutes } from './routes/adminPreContract.js';
+import {eventNeedsAutoInviteRoutes} from "./routes/eventNeeds.autoInvite.js";
+import eventNeedsRoutes from './routes/eventNeeds.js';
+import guestbookRoutes from "./routes/guestbook.js";
+import guestbookTokensRoutes from "./routes/guestbookTokens.js";
+import guestbookPublicRoutes from "./routes/guestbookPublic.js";
 
 // auth util
 import { verifyAuthFactory } from './middlewares/auth.js';
+import eventsBudgetRoutes from './routes/eventsBudget.js';
+import eventsAiNeedsRoutes from './routes/eventsAiNeeds.js';
 
 const PORT = Number(process.env.PORT || 4007);
 const HOST = process.env.HOST || '0.0.0.0';
@@ -77,6 +84,13 @@ if (eventBriefBudgetRoutes) eventBriefBudgetRoutes(app);
 if (eventTypesRoutes) eventTypesRoutes(app);
 if (assignmentsRoutes) assignmentsRoutes(app);
 if (adminPreContractRoutes) adminPreContractRoutes(app);
+if (eventsBudgetRoutes) eventsBudgetRoutes(app);
+if (eventsAiNeedsRoutes) eventsAiNeedsRoutes(app);
+if (eventNeedsAutoInviteRoutes) eventNeedsAutoInviteRoutes(app);
+if (eventNeedsRoutes) eventNeedsRoutes(app);
+if (guestbookRoutes) guestbookRoutes(app);
+if (guestbookTokensRoutes) guestbookTokensRoutes(app);
+if (guestbookPublicRoutes) guestbookPublicRoutes(app);
 
 // health
 app.get('/health', (_req, res) => res.json({ ok: true }));

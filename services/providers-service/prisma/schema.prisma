@@ -91,7 +91,6 @@ model ProviderProfile {
   address      String?
   description  String?
 
-
   createdAt    DateTime               @default(now())
   updatedAt    DateTime               @updatedAt
 
@@ -105,7 +104,7 @@ model ProviderProfile {
   reviews      ProviderReview[]
   groupMembers ProviderGroupMember[]
     adminNotes   ProviderAdminNote[]
-
+  unavailable ProviderUnavailable[]
   @@index([city])
   @@index([status])
 }
@@ -135,8 +134,19 @@ model ProviderCategory {
   isActive    Boolean               @default(true)
   createdAt   DateTime              @default(now())
   updatedAt   DateTime              @updatedAt
+  averagePrice  Decimal? @db.Decimal(12,2) // ✨ pentru AI recommendations
 
   subcategories ProviderSubcategory[]
+}
+
+model ProviderUnavailable {
+  id          String   @id @default(cuid())
+  providerId  Int
+  date        DateTime
+
+  provider    ProviderProfile @relation(fields: [providerId], references: [id])
+
+  @@index([providerId])
 }
 
 model ProviderSubcategory {

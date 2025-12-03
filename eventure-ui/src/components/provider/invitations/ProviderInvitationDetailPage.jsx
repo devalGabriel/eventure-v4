@@ -253,6 +253,7 @@ export default function ProviderInvitationDetailPage() {
         const lineBase = {
           label: l.label,
           qty: Number(l.qty) || 0,
+          needId: invitation.needId,
           amount: Number(l.amount) || 0,
           packageId: l.packageId || null,
           ...(l.baseAmount != null ? { baseAmount: Number(l.baseAmount) } : {}),

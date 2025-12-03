@@ -16,34 +16,36 @@ import {
   Typography,
 } from "@mui/material";
 
-export default function EventInviteProvidersDialog({
-  open,
-  onClose,
-  // buget (brief + per-serviciu)
-  clientBudget,
-  setClientBudget,
-  clientBudgetCurrency,
-  setClientBudgetCurrency,
-  eventBudget,
-  eventCurrency,
-  // catalog & bulk
-  catalogLoading,
-  flatCategories,
-  bulkCategoryIds,
-  setBulkCategoryIds,
-  bulkNote,
-  setBulkNote,
-  bulkLoading,
-  bulkMessage,
-  // single provider
-  singleProviderId,
-  setSingleProviderId,
-  singleNote,
-  setSingleNote,
-  // handlers
-  onBulkInvite,
-  onCreateSingleInvitation,
-}) {
+export default function EventInviteProvidersDialog(props) {
+  const {
+    open,
+    onClose,
+    // buget (brief + per-serviciu)
+    clientBudget,
+    setClientBudget,
+    clientBudgetCurrency,
+    setClientBudgetCurrency,
+    eventBudget,
+    eventCurrency,
+    // catalog & bulk
+    catalogLoading,
+    flatCategories,
+    bulkCategoryIds,
+    setBulkCategoryIds,
+    bulkNote,
+    setBulkNote,
+    bulkLoading,
+    bulkMessage,
+    // single provider
+    singleProviderId,
+    setSingleProviderId,
+    singleNote,
+    setSingleNote,
+    // handlers
+    onBulkInvite,
+    onCreateSingleInvitation,
+  } = props;
+
   const handleClose = () => {
     if (!bulkLoading && onClose) onClose();
   };

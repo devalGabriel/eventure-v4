@@ -22,7 +22,19 @@ import {
   LinearProgress,
   FormControl,
   InputLabel,
+  Checkbox,
+  FormControlLabel,
 } from "@mui/material";
+
+import {
+  getRecommendedNeeds,
+  autoInviteProviders,
+} from "@/lib/api/eventsClient";
+import { getMatchedProvidersForNeed } from "@/lib/api/providersClient";
+import LightbulbIcon from "@mui/icons-material/Lightbulb";
+import RocketLaunchIcon from "@mui/icons-material/RocketLaunch";
+import AutoAwesomeIcon from "@mui/icons-material/AutoAwesome";
+
 import SaveIcon from "@mui/icons-material/Save";
 import Link from "next/link";
 import { useParams, usePathname } from "next/navigation";
@@ -30,9 +42,14 @@ import { getRoleServer } from "@/lib/utils";
 import { useNotify } from "@/components/providers/NotificationProvider";
 import BudgetEstimatePanel from "@/components/events/BudgetEstimatePanel";
 import BriefTemplatePanel from "@/components/events/BriefTemplatePanel";
-import EventInvitationsOffersSection from '@/components/events/EventInvitationsOffersSection';
+import EventInvitationsOffersSection from "@/components/events/EventInvitationsOffersSection";
 
 import { extractLocaleAndPath } from "@/lib/extractLocaleAndPath";
+import BudgetAnalysisPanel from "@/components/events/BudgetAnalysisPanel";
+import GapsAnalysisPanel from "@/components/events/GapsAnalysisPanel";
+import GuestbookPanel from "@/components/events/GuestbookPanel";
+import EventGuestbookTokensPanel from "@/components/events/EventGuestbookTokensPanel";
+import EventGuestbookPanel from "@/components/events/EventGuestbookPanel";
 
 const statusOptions = ["DRAFT", "PLANNING", "ACTIVE", "COMPLETED", "CANCELED"];
 const taskStatusColor = (s) =>
@@ -176,22 +193,29 @@ export default function EventDetailsPage() {
         <Tab label="Selected providers" />
         <Tab label="Messages" />
         <Tab label="Files" />
+        <Tab label="Guestbook" />
       </Tabs>
 
       <Divider />
 
-      {tab === 0 && <OverviewTab event={event} onSaved={reload} />}
-{tab === 1 && <BriefTab event={event} />}
-{tab === 2 && <TasksTab eventId={event.id} eventDate={event.date} />}
-{tab === 3 && (
-  <EventInvitationsOffersSection eventId={event.id} role={role} />
-)}
-{tab === 4 && (
-  <SelectedProvidersTab eventId={event.id} />
-)}
-{tab === 5 && <MessagesTab eventId={event.id} />}
-{tab === 6 && <FilesTab eventId={event.id} />}
-
+      {tab === 0 && (
+        <>
+          <OverviewTab event={event} onSaved={reload} />
+          <BudgetAnalysisPanel eventId={event.id} />
+          <GapsAnalysisPanel eventId={event.id} />
+        </>
+      )}
+      {tab === 1 && <BriefTab event={event} />}
+      {tab === 2 && <TasksTab eventId={event.id} eventDate={event.date} />}
+      {tab === 3 && (
+        <EventInvitationsOffersSection eventId={event.id} role={role} />
+      )}
+      {tab === 4 && <SelectedProvidersTab eventId={event.id} />}
+      {tab === 5 && <MessagesTab eventId={event.id} />}
+      {tab === 6 && <FilesTab eventId={event.id} />}
+      {tab === 7 && (
+        <GuestbookPanel eventId={event.id} />
+      )}
     </Stack>
   );
 }
@@ -203,8 +227,8 @@ function OverviewTab({ event, onSaved }) {
   const [date, setDate] = useState(""); // string pentru <input type="datetime-local">
   const [availableStatuses, setAvailableStatuses] = useState([]);
   const { notify } = useNotify();
-const pathname = usePathname();
-const { locale } = extractLocaleAndPath(pathname);
+  const pathname = usePathname();
+  const { locale } = extractLocaleAndPath(pathname);
   // sincronizează state-ul cu event, inclusiv data
   useEffect(() => {
     setName(event.name || "");
@@ -264,13 +288,17 @@ const { locale } = extractLocaleAndPath(pathname);
             value={name}
             onChange={(e) => setName(e.target.value)}
           />
-<Button
-  component={Link}
-  href={`/${locale}/dashboard/client/offers?eventId=${event.id}&eventType=${event.type || ""}&guests=${event.guestCount || ""}&maxBudget=${event.budgetPlanned || ""}`}
-  variant="contained"
->
-  Caută oferte pentru acest eveniment
-</Button>
+          <Button
+            component={Link}
+            href={`/${locale}/dashboard/client/offers?eventId=${
+              event.id
+            }&eventType=${event.type || ""}&guests=${
+              event.guestCount || ""
+            }&maxBudget=${event.budgetPlanned || ""}`}
+            variant="contained"
+          >
+            Caută oferte pentru acest eveniment
+          </Button>
           <Select
             label="Status"
             value={status}
@@ -330,9 +358,28 @@ function BriefTab({ event }) {
   const [newNeedLabel, setNewNeedLabel] = useState("");
   const [newNeedBudget, setNewNeedBudget] = useState("");
 
+  //ai
+  const [aiRecommendedNeeds, setAiRecommendedNeeds] = useState([]);
+  const [loadingAi, setLoadingAi] = useState(false);
+  const [needForAiProviders, setNeedForAiProviders] = useState(null);
+  const [matchedProviders, setMatchedProviders] = useState([]);
+  const [openRecommendDialog, setOpenRecommendDialog] = useState(false);
+
   // --- Categorii / Subcategorii ---
   const [categories, setCategories] = useState([]);
   const [loadingCategories, setLoadingCategories] = useState(true);
+
+  async function loadAiRecommendations() {
+    try {
+      setLoadingAi(true);
+      const suggestions = await getRecommendedNeeds(event.id);
+      setAiRecommendedNeeds(suggestions || []);
+    } catch (e) {
+      notify("Eroare la încărcarea recomandărilor AI", "error");
+    } finally {
+      setLoadingAi(false);
+    }
+  }
 
   // -------------------------
   // LOAD CATEGORII
@@ -340,7 +387,9 @@ function BriefTab({ event }) {
   useEffect(() => {
     async function loadCategories() {
       try {
-        const res = await fetch("/api/providers/catalog/categories", { cache: "force-cache" });
+        const res = await fetch("/api/providers/catalog/categories", {
+          cache: "force-cache",
+        });
         const txt = await res.text();
         const data = txt ? JSON.parse(txt) : [];
         setCategories(Array.isArray(data) ? data : []);
@@ -352,6 +401,26 @@ function BriefTab({ event }) {
     }
     loadCategories();
   }, []);
+
+  // === helpers catalog ===
+  const flatSubcategories = useMemo(
+    () =>
+      categories.flatMap((cat) =>
+        (cat.subcategories || []).map((sub) => ({
+          ...sub,
+          categoryName: cat.name,
+        }))
+      ),
+    [categories]
+  );
+
+  const tagsForSubcategory = (subcategoryId) => {
+    if (!subcategoryId) return [];
+    const sub = flatSubcategories.find(
+      (s) => String(s.id) === String(subcategoryId)
+    );
+    return sub?.tags || [];
+  };
 
   // -------------------------
   // LOAD BRIEF + NEEDS
@@ -397,12 +466,21 @@ function BriefTab({ event }) {
                   ? null
                   : n.subcategoryId,
 
-              tagId:
-                n.tagId === null || n.tagId === undefined
-                  ? null
-                  : n.tagId,
+              tagId: n.tagId === null || n.tagId === undefined ? null : n.tagId,
 
               notes: n.notes || "",
+
+              priority: n.priority || "MEDIUM",
+              mustHave:
+                n.mustHave === null || n.mustHave === undefined
+                  ? true
+                  : !!n.mustHave,
+
+              // 👇 NOI
+              locked: !!n.locked,
+              offersDeadline: n.offersDeadline
+                ? String(n.offersDeadline).slice(0, 16) // YYYY-MM-DDTHH:mm
+                : "",
             }))
           : []
       );
@@ -450,6 +528,10 @@ function BriefTab({ event }) {
         subcategoryId: null,
         tagId: null,
         notes: "",
+        priority: "MEDIUM",
+        mustHave: true,
+        locked: false, // 👈 nou
+        offersDeadline: "", // 👈 nou
       },
     ]);
 
@@ -481,6 +563,9 @@ function BriefTab({ event }) {
 
       const needsPayload = {
         needs: needs.map((n) => ({
+          // 👇 trimitem id pentru nevoile existente
+          id: n.id && !String(n.id).startsWith("tmp-") ? n.id : undefined,
+
           label: n.label,
           budgetPlanned:
             n.budgetPlanned === "" || n.budgetPlanned === null
@@ -502,9 +587,7 @@ function BriefTab({ event }) {
               : n.subcategoryId,
 
           tagId:
-            n.tagId === undefined ||
-            n.tagId === null ||
-            n.tagId === ""
+            n.tagId === undefined || n.tagId === null || n.tagId === ""
               ? null
               : n.tagId,
 
@@ -513,6 +596,19 @@ function BriefTab({ event }) {
             n.notes !== null &&
             String(n.notes).trim() !== ""
               ? String(n.notes).trim()
+              : null,
+
+          priority:
+            typeof n.priority === "string" && n.priority
+              ? n.priority.toUpperCase()
+              : "MEDIUM",
+
+          mustHave: n.mustHave === undefined ? true : !!n.mustHave,
+
+          // 👇 nou: deadline pentru oferte
+          offersDeadline:
+            n.offersDeadline && n.offersDeadline !== ""
+              ? n.offersDeadline
               : null,
         })),
       };
@@ -539,7 +635,7 @@ function BriefTab({ event }) {
   return (
     <Card>
       <CardContent>
-        <Stack spacing={3} maxWidth={700}>
+        <Stack spacing={3} maxWidth={1800}>
           <Typography variant="h6">Profil eveniment</Typography>
 
           <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
@@ -618,15 +714,15 @@ function BriefTab({ event }) {
                   spacing={1}
                   alignItems={{ xs: "flex-start", sm: "center" }}
                   justifyContent="space-between"
+                  disabled={n.locked}
                 >
                   {/* Serviciu */}
                   <TextField
                     label="Serviciu"
                     value={n.label}
-                    onChange={(e) =>
-                      updateNeed(idx, { label: e.target.value })
-                    }
+                    onChange={(e) => updateNeed(idx, { label: e.target.value })}
                     sx={{ flex: 2 }}
+                    disabled={n.locked}
                   />
 
                   {/* Categorie */}
@@ -655,7 +751,7 @@ function BriefTab({ event }) {
                   {/* Subcategorie */}
                   <FormControl
                     sx={{ flex: 1, minWidth: 180 }}
-                    disabled={!n.categoryId}
+                    disabled={!n.categoryId || n.locked}
                   >
                     <InputLabel>Subcategorie</InputLabel>
                     <Select
@@ -668,11 +764,35 @@ function BriefTab({ event }) {
                       }
                     >
                       <MenuItem value="">Nicio subcategorie</MenuItem>
-                      {(categories.find((c) => c.id === n.categoryId)
-                        ?.subcategories || []
+                      {(
+                        categories.find((c) => c.id === n.categoryId)
+                          ?.subcategories || []
                       ).map((sub) => (
                         <MenuItem key={sub.id} value={sub.id}>
                           {sub.name}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                  {/* Particularitate (tag) */}
+                  <FormControl
+                    sx={{ flex: 1, minWidth: 180 }}
+                    disabled={!n.subcategoryId || n.locked}
+                  >
+                    <InputLabel>Particularitate</InputLabel>
+                    <Select
+                      value={n.tagId || ""}
+                      label="Particularitate"
+                      onChange={(e) =>
+                        updateNeed(idx, {
+                          tagId: e.target.value || null,
+                        })
+                      }
+                    >
+                      <MenuItem value="">Nicio particularitate</MenuItem>
+                      {tagsForSubcategory(n.subcategoryId).map((tag) => (
+                        <MenuItem key={tag.id} value={tag.id}>
+                          {tag.label}
                         </MenuItem>
                       ))}
                     </Select>
@@ -687,6 +807,7 @@ function BriefTab({ event }) {
                       updateNeed(idx, { budgetPlanned: e.target.value })
                     }
                     sx={{ flex: 1 }}
+                    disabled={n.locked}
                   />
 
                   {/* Delete */}
@@ -694,12 +815,198 @@ function BriefTab({ event }) {
                     variant="text"
                     color="error"
                     onClick={() => removeNeed(idx)}
+                    disabled={n.locked}
                   >
                     Șterge
                   </Button>
                 </Stack>
+                <Stack direction="row" spacing={1} sx={{ mt: 1 }}>
+                  <Button
+                    size="small"
+                    startIcon={<LightbulbIcon />}
+                    onClick={async () => {
+                      setNeedForAiProviders(n);
+                      try {
+                        const res = await getMatchedProvidersForNeed(n, {
+                          city,
+                          eventType: event.eventType,
+                          guestCount,
+                        });
+
+                        // 🔒 Normalizare: scoatem întotdeauna un array
+                        const list = Array.isArray(res?.providers)
+                          ? res.providers
+                          : Array.isArray(res)
+                          ? res
+                          : [];
+
+                        setMatchedProviders(list);
+                        setOpenRecommendDialog(true);
+                      } catch (err) {
+                        console.error("getMatchedProvidersForNeed error:", err);
+                        notify(
+                          "Nu s-au putut încărca recomandările de provideri.",
+                          "error"
+                        );
+                        setMatchedProviders([]);
+                        setOpenRecommendDialog(true);
+                      }
+                    }}
+                    disabled={n.locked}
+                  >
+                    Recomandă furnizori
+                  </Button>
+
+                  <Button
+                    size="small"
+                    startIcon={<RocketLaunchIcon />}
+                    onClick={() =>
+                      autoInviteProviders(event.id, n.id, "top", 5).then(() =>
+                        notify("Invitații trimise", "success")
+                      )
+                    }
+                    disabled={n.locked}
+                  >
+                    Invită Top 5
+                  </Button>
+
+                  <Button
+                    size="small"
+                    color="warning"
+                    onClick={() =>
+                      autoInviteProviders(event.id, n.id, "all").then(() =>
+                        notify(
+                          "Invitații trimise tuturor providerilor compatibili",
+                          "success"
+                        )
+                      )
+                    }
+                    disabled={n.locked}
+                  >
+                    Invită toți
+                  </Button>
+                </Stack>
+
+                {/* Prioritate, obligatoriu & detalii specifice */}
+                <Stack
+                  direction={{ xs: "column", sm: "row" }}
+                  spacing={1}
+                  sx={{ mt: 1 }}
+                  alignItems={{ xs: "flex-start", sm: "center" }}
+                >
+                  <FormControl sx={{ minWidth: 140 }} disabled={n.locked}>
+                    <InputLabel>Prioritate</InputLabel>
+                    <Select
+                      label="Prioritate"
+                      value={n.priority || "MEDIUM"}
+                      onChange={(e) =>
+                        updateNeed(idx, { priority: e.target.value })
+                      }
+                    >
+                      <MenuItem value="HIGH">Mare</MenuItem>
+                      <MenuItem value="MEDIUM">Medie</MenuItem>
+                      <MenuItem value="LOW">Mică</MenuItem>
+                    </Select>
+                  </FormControl>
+
+                  <FormControlLabel
+                    control={
+                      <Checkbox
+                        checked={n.mustHave !== false}
+                        onChange={(e) =>
+                          updateNeed(idx, { mustHave: e.target.checked })
+                        }
+                        disabled={n.locked}
+                      />
+                    }
+                    label="Obligatoriu"
+                  />
+                  <TextField
+                    label="Deadline oferte"
+                    type="datetime-local"
+                    value={n.offersDeadline || ""}
+                    onChange={(e) =>
+                      updateNeed(idx, { offersDeadline: e.target.value })
+                    }
+                    sx={{ minWidth: 220 }}
+                    disabled={n.locked}
+                  />
+
+                  <TextField
+                    label="Detalii pentru acest serviciu"
+                    value={n.notes || ""}
+                    onChange={(e) => updateNeed(idx, { notes: e.target.value })}
+                    multiline
+                    minRows={2}
+                    sx={{ flex: 1 }}
+                    disabled={n.locked}
+                  />
+                </Stack>
               </Card>
             ))}
+            <Box sx={{ mt: 4 }}>
+              <Stack
+                direction="row"
+                justifyContent="space-between"
+                alignItems="center"
+              >
+                <Typography variant="h6">
+                  Sugestii AI pentru serviciile lipsă
+                </Typography>
+                <Button
+                  startIcon={<AutoAwesomeIcon />}
+                  onClick={loadAiRecommendations}
+                  disabled={loadingAi}
+                >
+                  Generează sugestii
+                </Button>
+              </Stack>
+
+              {loadingAi && <LinearProgress sx={{ mt: 2 }} />}
+
+              {aiRecommendedNeeds.length > 0 && (
+                <Stack spacing={2} sx={{ mt: 2 }}>
+                  {aiRecommendedNeeds.map((rec, idx) => (
+                    <Card
+                      key={idx}
+                      sx={{ p: 2, opacity: 0.85, border: "1px dashed #999" }}
+                    >
+                      <Stack direction="row" justifyContent="space-between">
+                        <Typography>
+                          <b>{rec.label}</b> (recomandat)
+                          <br />
+                          Buget sugerat: {rec.suggestedBudget} lei
+                        </Typography>
+
+                        <Stack direction="row" spacing={1}>
+                          <Button
+                            size="small"
+                            onClick={() => {
+                              setNeeds((prev) => [
+                                ...prev,
+                                {
+                                  id: `tmp-${Date.now()}`,
+                                  label: rec.label,
+                                  categoryId: rec.categoryId,
+                                  subcategoryId: rec.subcategoryId,
+                                  tagId: rec.tagId,
+                                  notes: "",
+                                  budgetPlanned: rec.suggestedBudget,
+                                  priority: rec.priority,
+                                  mustHave: rec.mustHave,
+                                },
+                              ]);
+                            }}
+                          >
+                            Adaugă
+                          </Button>
+                        </Stack>
+                      </Stack>
+                    </Card>
+                  ))}
+                </Stack>
+              )}
+            </Box>
 
             {!needs.length && (
               <Box sx={{ p: 2, color: "text.secondary" }}>
@@ -707,6 +1014,9 @@ function BriefTab({ event }) {
               </Box>
             )}
           </Stack>
+          <Box sx={{ mt: 4 }}>
+            <GapsAnalysisPanel eventId={event.id} />
+          </Box>
 
           {/* SAVE */}
           <Stack direction="row" spacing={2}>
@@ -720,12 +1030,65 @@ function BriefTab({ event }) {
           <Box sx={{ mt: 2 }}>
             <BudgetEstimatePanel eventId={event.id} />
           </Box>
+          <Box sx={{ mt: 3 }}>
+  <EventGuestbookPanel eventId={event.id} />
+</Box>
         </Stack>
       </CardContent>
+      <Box sx={{ mt: 3 }}>
+  <EventGuestbookTokensPanel event={event} />
+</Box>
+      <Dialog
+        open={openRecommendDialog}
+        onClose={() => setOpenRecommendDialog(false)}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle>
+          Recomandări AI pentru: {needForAiProviders?.label}
+        </DialogTitle>
+        <DialogContent dividers>
+          {Array.isArray(matchedProviders) && matchedProviders.length > 0 ? (
+            matchedProviders.map((p) => (
+              <Card key={p.id} sx={{ p: 2, mb: 1 }}>
+                <Stack direction="row" justifyContent="space-between">
+                  <Typography>
+                    <b>{p.name}</b>
+                    <br />
+                    Oras: {p.city}
+                    <br />
+                    Scor: {p.score}
+                  </Typography>
+                  <Button
+                    variant="contained"
+                    onClick={() =>
+                      autoInviteProviders(
+                        event.id,
+                        needForAiProviders.id,
+                        "top",
+                        1
+                      ).then(() => notify("Invitație trimisă", "success"))
+                    }
+                  >
+                    Invită
+                  </Button>
+                </Stack>
+              </Card>
+            ))
+          ) : (
+            <Typography variant="body2" color="text.secondary">
+              Nu există încă recomandări pentru acest serviciu.
+            </Typography>
+          )}
+        </DialogContent>
+
+        <DialogActions>
+          <Button onClick={() => setOpenRecommendDialog(false)}>Închide</Button>
+        </DialogActions>
+      </Dialog>
     </Card>
   );
 }
-
 
 function TasksTab({ eventId, eventDate }) {
   const { notify } = useNotify();
@@ -1244,10 +1607,10 @@ function SelectedProvidersTab({ eventId }) {
       setError(null);
       try {
         const r = await fetch(`/api/events/${eventId}/assignments`, {
-          cache: 'no-store',
+          cache: "no-store",
         });
         const txt = await r.text();
-        if (!r.ok) throw new Error(txt || 'Load failed');
+        if (!r.ok) throw new Error(txt || "Load failed");
         const json = txt ? JSON.parse(txt) : [];
         const list = Array.isArray(json) ? json : json.rows || [];
         if (mounted) setRows(list);
@@ -1272,18 +1635,29 @@ function SelectedProvidersTab({ eventId }) {
           {error}
         </Typography>
       )}
+
       <Stack spacing={1}>
         {rows.map((a) => (
-          <Card key={a.id} sx={{ borderRadius: 2 }}>
+          <Card
+            key={a.id}
+            sx={{
+              p: 2,
+              mb: 1,
+              borderLeft:
+                a.status === "CONFIRMED_PRE_CONTRACT" || a.status === "SELECTED"
+                  ? "6px solid #4caf50"
+                  : "6px solid #ff9800",
+            }}
+          >
             <CardContent>
               <Stack
-                direction={{ xs: 'column', md: 'row' }}
+                direction={{ xs: "column", md: "row" }}
                 justifyContent="space-between"
                 spacing={1}
               >
                 <Box>
                   <Typography variant="subtitle1">
-                    Provider / Grup: {a.providerId || a.providerGroupId || '-'}
+                    Provider / Grup: {a.providerId || a.providerGroupId || "-"}
                   </Typography>
                   {a.notes && (
                     <Typography variant="body2" color="text.secondary">
@@ -1291,16 +1665,19 @@ function SelectedProvidersTab({ eventId }) {
                     </Typography>
                   )}
                 </Box>
-                <Stack spacing={1} alignItems={{ xs: 'flex-start', md: 'flex-end' }}>
+                <Stack
+                  spacing={1}
+                  alignItems={{ xs: "flex-start", md: "flex-end" }}
+                >
                   <Chip
                     label={a.status}
                     size="small"
                     color={
-                      a.status === 'CONFIRMED_PRE_CONTRACT'
-                        ? 'success'
-                        : a.status === 'SELECTED'
-                        ? 'info'
-                        : 'default'
+                      a.status === "CONFIRMED_PRE_CONTRACT"
+                        ? "success"
+                        : a.status === "SELECTED"
+                        ? "info"
+                        : "default"
                     }
                   />
                   <Button
@@ -1309,12 +1686,12 @@ function SelectedProvidersTab({ eventId }) {
                     onClick={async () => {
                       try {
                         const targetStatus =
-                          a.status === 'SHORTLISTED'
-                            ? 'SELECTED'
-                            : 'CONFIRMED_PRE_CONTRACT';
+                          a.status === "SHORTLISTED"
+                            ? "SELECTED"
+                            : "CONFIRMED_PRE_CONTRACT";
                         const r = await fetch(`/api/assignments/${a.id}`, {
-                          method: 'PATCH',
-                          headers: { 'content-type': 'application/json' },
+                          method: "PATCH",
+                          headers: { "content-type": "application/json" },
                           body: JSON.stringify({ status: targetStatus }),
                         });
                         const txt = await r.text();
@@ -1329,19 +1706,20 @@ function SelectedProvidersTab({ eventId }) {
                       }
                     }}
                   >
-                    {a.status === 'SHORTLISTED'
-                      ? 'Select provider'
-                      : a.status === 'SELECTED'
-                      ? 'Confirm pre-contract'
-                      : 'Pre-contract confirmed'}
+                    {a.status === "SHORTLISTED"
+                      ? "Select provider"
+                      : a.status === "SELECTED"
+                      ? "Confirm pre-contract"
+                      : "Pre-contract confirmed"}
                   </Button>
                 </Stack>
               </Stack>
             </CardContent>
           </Card>
         ))}
+
         {!rows.length && !loading && (
-          <Box sx={{ p: 1, color: 'text.secondary' }}>
+          <Box sx={{ p: 1, color: "text.secondary" }}>
             Nu ai selectat încă furnizori pentru acest eveniment.
           </Box>
         )}

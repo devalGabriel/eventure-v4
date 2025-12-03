@@ -15,6 +15,12 @@ enum EventStatus {
   CANCELED
 }
 
+enum EventNeedPriority {
+  LOW
+  MEDIUM  
+  HIGH
+}
+
 enum ParticipantRole {
   CLIENT
   PROVIDER
@@ -37,6 +43,18 @@ enum AssignmentStatus {
   SHORTLISTED
   SELECTED
   CONFIRMED_PRE_CONTRACT
+}
+
+enum GuestbookTokenType {
+  GENERIC      // link public, share-uibil la toți
+  PARTICIPANT  // legat de un participant din EventParticipant
+  EMAIL        // generat pentru email (viitor mail-service)
+}
+
+enum GuestbookTokenStatus {
+  ACTIVE
+  REVOKED
+  EXPIRED
 }
 
 model Event {
@@ -65,6 +83,69 @@ model Event {
   needs        EventNeed[] 
   invitations  EventInvitation[]
   assignments  EventProviderAssignment[]
+  brief     EventBrief[]
+  guestbookEntries EventGuestbookEntry[]
+  guestbookTokens  EventGuestbookToken[]
+}
+
+model EventGuestbookToken {
+  id        String   @id @default(cuid())
+  eventId   String
+  token     String   @unique
+
+  type      GuestbookTokenType
+  status    GuestbookTokenStatus @default(ACTIVE)
+
+  // legare opțională de participant
+  participantUserId String?
+  participantRole   ParticipantRole?
+  email             String?
+  nameHint          String?   // ex. "Nașii", "Familia Ionescu"
+
+  // control trafic
+  maxUses   Int?      // null = nelimitat
+  usedCount Int       @default(0)
+  expiresAt DateTime?
+
+  // permisiuni
+  canRead   Boolean   @default(true)
+  canWrite  Boolean   @default(true)
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  event Event @relation(fields: [eventId], references: [id])
+
+  // 🔗 relație compusă cu EventParticipant
+  participant EventParticipant? @relation(fields: [eventId, participantUserId, participantRole], references: [eventId, userId, role])
+
+  entries EventGuestbookEntry[]
+
+  @@index([eventId])
+  @@index([participantUserId, participantRole])
+  @@index([email])
+}
+
+
+model EventGuestbookEntry {
+  id        String   @id @default(cuid())
+  eventId   String
+  // cine a scris – liber, nu ne bazăm pe userId (poți trece "Mireasa", "Nașii", etc.)
+  authorName  String
+  message     String  @db.Text
+
+  // opțional, dacă vrei să știi cine din aplicație a creat mesajul
+  createdByUserId String?
+    tokenId         String?   // 🔗 din ce link a venit (public)
+
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  event     Event    @relation(fields: [eventId], references: [id])
+  token     EventGuestbookToken? @relation(fields: [tokenId], references: [id])
+
+  @@index([eventId])
+    @@index([tokenId])
 }
 
 model EventNeed {
@@ -77,18 +158,42 @@ model EventNeed {
   tagId          Int?
 
   label          String?            // ex: "Muzică / DJ"
-  budgetPlanned  Decimal? @db.Decimal(12,2)
+  budgetPlanned  Decimal? @db.Decimal(12, 2)
   notes          String?  @db.Text
+
+  // câmpuri „bogate” pentru logica de planificare
+  priority       EventNeedPriority @default(MEDIUM)
+  mustHave       Boolean           @default(true)
+
+  offersDeadline DateTime?        // până când se pot trimite/accepta oferte pe acest need
+  locked         Boolean          @default(false) // true = nu mai poate fi editat/deleted în UI
 
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
   event          Event   @relation(fields: [eventId], references: [id])
+  invitations    EventInvitation[]
+
+
+  @@index([eventId])
+
+}
+
+model EventBrief {
+  eventId        String   @id
+  guestCount     Int?
+  city           String?
+  style          String?
+  locationType   String?
+  notes          String?  @db.Text
+
+  initialBudget  Decimal? @db.Decimal(12,2)   // buget planificat la început
+  realBudget     Decimal? @db.Decimal(12,2)   // buget real (ofertă acceptată cumulată)
+
+  event          Event    @relation(fields: [eventId], references: [id])
 
   @@index([eventId])
 }
-
-
 model EventTask {
   id         String     @id @default(cuid())
   eventId    String
@@ -114,6 +219,9 @@ model EventInvitation {
   message         String?          @db.Text  // mesaj de invitație
   roleHint        String?          // ex: "music", "photo"
   replyDeadline   DateTime?        // data limită pentru răspuns
+  needId   String?   // ID din EventNeed
+
+  need     EventNeed? @relation(fields: [needId], references: [id])
 
   note            String?          @db.Text  // legacy / compat (poți renunța ulterior)
   proposedBudget Decimal?   // buget propus de client
@@ -126,6 +234,7 @@ model EventInvitation {
   @@index([eventId])
   @@index([providerId])
   @@index([providerGroupId])
+  @@index([needId])
 }
 
 
@@ -189,9 +298,15 @@ model EventParticipant {
 
   event    Event @relation(fields: [eventId], references: [id])
 
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  guestBookTokens EventGuestbookToken[]
+
   @@id([eventId, userId, role])
   @@index([userId, role])
 }
+
 
 model EventTypeTemplate {
   id          String   @id @default(cuid())
@@ -219,13 +334,16 @@ enum OfferStatus {
   REJECTED_BY_CLIENT     // explicit
   WITHDRAWN
   CANCELLED
+  LOCKED
 }
+
 model EventOffer {
   id             String      @id @default(cuid())
   eventId        String
   invitationId   String?     // opțional: ofertă ca răspuns la o invitație
   providerId     String
   providerGroupId String?
+  needId   String?   // legătura directă cu nevoia acoperită
 
   startsAt       DateTime?
   endsAt         DateTime?
@@ -246,6 +364,7 @@ model EventOffer {
   @@index([eventId])
   @@index([providerId])
   @@index([invitationId])
+   @@index([needId])
 }
 
 model ServiceGroup {

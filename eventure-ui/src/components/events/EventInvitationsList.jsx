@@ -16,6 +16,7 @@ import {
 } from "./eventStatusHelpers";
 import { useRouter } from "next/navigation";
 import { extractLocaleAndPath } from "@/lib/extractLocaleAndPath";
+import { getNeedLabel } from "@/lib/utils-client";
 
 export default function EventInvitationsList({
   invitations,
@@ -25,9 +26,9 @@ export default function EventInvitationsList({
   selectedInvitationId,
   onSelectInvitation,
 }) {
-    const { push } = useRouter();
-    const pathname = useRouter().pathname;
-    const {locale, path} = extractLocaleAndPath(pathname)
+  const { push } = useRouter();
+  const pathname = useRouter().pathname;
+  const { locale, path } = extractLocaleAndPath(pathname);
   return (
     <Card>
       <CardContent>
@@ -55,7 +56,8 @@ export default function EventInvitationsList({
 
             let title = "Invitație";
             if (inv.providerProfile?.displayName || inv.providerProfile?.name) {
-              title = inv.providerProfile.displayName || inv.providerProfile.name;
+              title =
+                inv.providerProfile.displayName || inv.providerProfile.name;
             } else if (inv.providerName) {
               title = inv.providerName;
             } else if (inv.providerId) {
@@ -71,24 +73,18 @@ export default function EventInvitationsList({
             return (
               <Box
                 key={inv.id}
-                onClick={() =>
-                  onSelectInvitation && onSelectInvitation(inv.id)
-                }
+                onClick={() => onSelectInvitation && onSelectInvitation(inv.id)}
                 sx={{
                   p: 1,
                   borderRadius: 1,
                   border: "1px solid",
                   borderColor: selected ? "primary.main" : "divider",
-                  bgcolor: selected
-                    ? "action.selected"
-                    : "background.paper",
+                  bgcolor: selected ? "action.selected" : "background.paper",
                   cursor: "pointer",
                   transition: "background-color 0.15s, border-color 0.15s",
                   "&:hover": {
                     borderColor: "primary.main",
-                    bgcolor: selected
-                      ? "action.selected"
-                      : "action.hover",
+                    bgcolor: selected ? "action.selected" : "action.hover",
                   },
                 }}
               >
@@ -111,6 +107,14 @@ export default function EventInvitationsList({
                           size="small"
                           color={invitationStatusColor(inv.status)}
                           label={inv.status}
+                        />
+                      )}
+                      {inv.need && (
+                        <Chip
+                          label={`Nevoie: ${inv.need.label}`}
+                          color="primary"
+                          size="small"
+                          sx={{ ml: 1 }}
                         />
                       )}
                       {assignment && (
@@ -137,19 +141,21 @@ export default function EventInvitationsList({
                       </Typography>
                     )}
                   </Box>
+                  {inv.needId && (
+                    <Chip
+                      label={`Acoperă: ${getNeedLabel(inv.needId)}`}
+                      color="primary"
+                      size="small"
+                    />
+                  )}
                 </Stack>
-                <Stack
-                  direction="row"
-                  spacing={1}
-                    alignItems="center"
-                >
+                <Stack direction="row" spacing={1} alignItems="center">
                   <Typography
                     variant="caption"
                     color="text.secondary"
                     sx={{ flexGrow: 1 }}
-                  > 
-                    Trimis la:{" "}
-                    {new Date(inv.createdAt).toLocaleDateString()}
+                  >
+                    Trimis la: {new Date(inv.createdAt).toLocaleDateString()}
                   </Typography>
                 </Stack>
                 {/* buton la capat pentru acces ruta */}
@@ -158,8 +164,10 @@ export default function EventInvitationsList({
                     size="small"
                     variant="outlined"
                     onClick={(e) => {
-                        push(`/${locale}/dashboard/${role}/events/${inv.eventId}/requests/${inv.id}`);
-                        e.stopPropagation();
+                      push(
+                        `/${locale}/dashboard/${role}/events/${inv.eventId}/requests/${inv.id}`
+                      );
+                      e.stopPropagation();
                     }}
                   >
                     Vezi detalii
