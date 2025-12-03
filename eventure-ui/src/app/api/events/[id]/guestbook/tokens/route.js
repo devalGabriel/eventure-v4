@@ -1,12 +1,13 @@
 import { NextResponse } from "next/server";
 
-const EVENTS_URL = process.env.EVENTS_INTERNAL_URL || "http://localhost:4002";
+const EVENTS_URL = process.env.EVENTS_INTERNAL_URL || "http://localhost:4003";
 
 export async function GET(req, { params }) {
-  const { eventId } = params;
+  const p = await params;
+  const { id } = p;
   const cookie = req.headers.get("cookie") || "";
 
-  const r = await fetch(`${EVENTS_URL}/events/${eventId}/guestbook/tokens`, {
+  const r = await fetch(`${EVENTS_URL}/events/${id}/guestbook/tokens`, {
     headers: { cookie },
   });
   const txt = await r.text();
@@ -19,11 +20,12 @@ export async function GET(req, { params }) {
 }
 
 export async function POST(req, { params }) {
-  const { eventId } = params;
+  const p = await params;
+  const { id } = p;
   const cookie = req.headers.get("cookie") || "";
   const body = await req.text();
 
-  const r = await fetch(`${EVENTS_URL}/events/${eventId}/guestbook/tokens`, {
+  const r = await fetch(`${EVENTS_URL}/events/${id}/guestbook/tokens`, {
     method: "POST",
     headers: {
       cookie,
