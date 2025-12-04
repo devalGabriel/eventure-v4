@@ -1,5 +1,6 @@
 // services/events-service/src/services/providerAccess.js
 import { prisma } from '../db.js';
+import { isAdminUser, getUserId } from './authz.js';
 
 export async function getProviderState(userId) {
   const userIdStr = (userId ?? '').toString();
@@ -28,9 +29,9 @@ export async function getProviderState(userId) {
 // Guard generic: admin sau provider aprobat
 export async function ensureProviderAccess(user, reply) {
   // admin are voie oricum
-  if (user.role === 'admin') return true;
+  if (isAdminUser(user)) return true;
 
-  const st = await getProviderState(user.userId ?? user.id);
+  const st = await getProviderState(getUserId(user));
   if (st.approved) return true;
 
   reply.code(403).send({ error: 'Provider access required (apply/approve first)' });

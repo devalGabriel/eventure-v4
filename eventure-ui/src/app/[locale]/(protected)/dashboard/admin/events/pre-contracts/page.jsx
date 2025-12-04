@@ -109,6 +109,25 @@ export default function AdminPreContractsPage() {
     });
   }, [rows, clientFilter, providerFilter]);
 
+  const summary = useMemo(() => {
+    const base = { total: rows.length, byStatus: {} };
+    (rows || []).forEach((r) => {
+      const key = r.preContractStatus || "";
+      base.byStatus[key] = (base.byStatus[key] || 0) + 1;
+    });
+    return base;
+  }, [rows]);
+
+  const summaryChips = useMemo(
+    () =>
+      STATUS_OPTIONS.map((opt) => ({
+        ...opt,
+        count:
+          opt.value === "" ? summary.total : summary.byStatus[opt.value] || 0,
+      })),
+    [summary]
+  );
+
   const eventsBasePath = `/${locale}/events`;
   const usersBasePath = `/${locale}/admin/users`;
 
@@ -117,7 +136,36 @@ export default function AdminPreContractsPage() {
       <Typography variant="h5" sx={{ mb: 2 }}>
         Pre-contract overview
       </Typography>
-
+      {/* sumar pipeline */}
+      <Box sx={{ mb: 2 }}>
+        <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
+          <Typography variant="body2" color="text.secondary" sx={{ mr: 1 }}>
+            {summary.total} evenimente în pipeline
+          </Typography>
+          {summaryChips.map((opt) => (
+            <Chip
+              key={opt.value || "all"}
+              label={
+                opt.value
+                  ? `${opt.label} (${opt.count})`
+                  : `${opt.label} (${summary.total})`
+              }
+              size="small"
+              variant={
+                statusFilter === opt.value || (!statusFilter && !opt.value)
+                  ? "filled"
+                  : "outlined"
+              }
+              color={
+                statusFilter === opt.value || (!statusFilter && !opt.value)
+                  ? "primary"
+                  : "default"
+              }
+              onClick={() => setStatusFilter(opt.value)}
+            />
+          ))}
+        </Stack>
+      </Box>
       <Paper sx={{ p: 2, mb: 2 }}>
         <Toolbar sx={{ display: "flex", gap: 2, flexWrap: "wrap" }}>
           <TextField

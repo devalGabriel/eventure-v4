@@ -6,18 +6,21 @@ export async function GET(req) {
   const url = new URL(req.url);
   const searchParams = url.searchParams;
 
-  // Preluăm parametrii existenți (page, pageSize, q, isActive etc.)
+  // preluăm parametrii existenți (page, pageSize, q, isActive etc.)
   const forwarded = new URLSearchParams(searchParams);
 
-  // Ne asigurăm că rolul este CLIENT
+  // ne asigurăm că rolul este CLIENT
   if (!forwarded.has("role")) {
     forwarded.set("role", "CLIENT");
   }
 
-  const upstream = await usersFetch(`/admin/users?${forwarded.toString()}`, {
+  const query = forwarded.toString();
+  const path = `/admin/users${query ? `?${query}` : ""}`;
+
+  const upstream = await usersFetch(path, {
     method: "GET",
     headers: {
-      "x-user-role": "ADMIN",
+      "x-user-role": "ADMIN", // validare minimală în users-service
     },
   });
 

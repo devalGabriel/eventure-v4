@@ -1,3 +1,4 @@
+// src/components/dashboard/AdminKpiCard.jsx
 "use client";
 
 import { useEffect, useState, useMemo } from "react";
@@ -21,14 +22,21 @@ const metricBoxSx = {
   bgcolor: "background.default",
 };
 
+function percent(part, total) {
+  const t = Number(total) || 0;
+  if (!t) return 0;
+  const p = ((Number(part) || 0) * 100) / t;
+  return Math.round(p);
+}
+
 export default function AdminKpiCard() {
   // TAB ACTIV
   const [activeTab, setActiveTab] = useState("providers");
 
-  // STATS PROVIDERI (tab Furnizori)
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [stats, setStats] = useState({
+  // ---------- PROVIDERS STATE ----------
+  const [providersLoading, setProvidersLoading] = useState(true);
+  const [providersError, setProvidersError] = useState(null);
+  const [providerStats, setProviderStats] = useState({
     total: 0,
     active: 0,
     pending: 0,
@@ -37,12 +45,36 @@ export default function AdminKpiCard() {
     watchlisted: 0,
   });
 
+  // ---------- EVENTS STATE ----------
+  const [eventsLoading, setEventsLoading] = useState(true);
+  const [eventsError, setEventsError] = useState(null);
+  const [eventsStats, setEventsStats] = useState({
+    total: 0,
+    preContract: {
+      no_activity: 0,
+      invitations_sent: 0,
+      in_negotiation: 0,
+      providers_selected: 0,
+      atRisk: 0,
+    },
+  });
+
+  // ---------- CLIENTS STATE ----------
+  const [clientsLoading, setClientsLoading] = useState(true);
+  const [clientsError, setClientsError] = useState(null);
+  const [clientsStats, setClientsStats] = useState({
+    total: 0,
+  });
+
+  // =========================================================
+  // LOAD PROVIDERS (exact ca varianta ta veche, doar ambalat)
+  // =========================================================
   useEffect(() => {
     let cancelled = false;
 
-    async function load() {
-      setLoading(true);
-      setError(null);
+    async function loadProviders() {
+      setProvidersLoading(true);
+      setProvidersError(null);
 
       try {
         const [all, active, pending, suspended, incomplete, watchlisted] =
@@ -65,54 +97,247 @@ export default function AdminKpiCard() {
 
         if (cancelled) return;
 
-        setStats({
-          total: all.total ?? 0,
-          active: active.total ?? 0,
-          pending: pending.total ?? 0,
-          suspended: suspended.total ?? 0,
-          incomplete: incomplete.total ?? 0,
-          watchlisted: watchlisted.total ?? 0,
+        setProviderStats({
+          total: all?.total ?? 0,
+          active: active?.total ?? 0,
+          pending: pending?.total ?? 0,
+          suspended: suspended?.total ?? 0,
+          incomplete: incomplete?.total ?? 0,
+          watchlisted: watchlisted?.total ?? 0,
         });
       } catch (e) {
         console.error(e);
         if (!cancelled) {
-          setError(
+          setProvidersError(
             e?.message ||
               "Eroare la încărcarea statisticilor pentru provideri."
           );
         }
       } finally {
         if (!cancelled) {
-          setLoading(false);
+          setProvidersLoading(false);
         }
       }
     }
 
-    load();
+    loadProviders();
     return () => {
       cancelled = true;
     };
   }, []);
 
-  const percent = (part, total) =>
-    total ? Math.round((part / total) * 100) : 0;
-
   const activePercent = useMemo(
-    () => percent(stats.active, stats.total),
-    [stats.active, stats.total]
+    () => percent(providerStats.active, providerStats.total),
+    [providerStats.active, providerStats.total]
   );
   const pendingPercent = useMemo(
-    () => percent(stats.pending, stats.total),
-    [stats.pending, stats.total]
+    () => percent(providerStats.pending, providerStats.total),
+    [providerStats.pending, providerStats.total]
   );
   const suspendedPercent = useMemo(
-    () => percent(stats.suspended, stats.total),
-    [stats.suspended, stats.total]
+    () => percent(providerStats.suspended, providerStats.total),
+    [providerStats.suspended, providerStats.total]
   );
   const watchlistedPercent = useMemo(
-    () => percent(stats.watchlisted, stats.total),
-    [stats.watchlisted, stats.total]
+    () => percent(providerStats.watchlisted, providerStats.total),
+    [providerStats.watchlisted, providerStats.total]
   );
+
+  // =========================================================
+  // LOAD EVENTS (total + pre-contract pipeline)
+  // =========================================================
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadEvents() {
+      setEventsLoading(true);
+      setEventsError(null);
+
+      let totalEvents = 0;
+      const preContract = {
+        no_activity: 0,
+        invitations_sent: 0,
+        in_negotiation: 0,
+        providers_selected: 0,
+        atRisk: 0,
+      };
+
+      try {
+        // 1) total evenimente (events-service /events)
+        try {
+          const res = await fetch("/api/events?page=1&pageSize=1", {
+            cache: "no-store",
+            credentials: "include",
+          });
+          const txt = await res.text();
+          if (!res.ok) {
+            console.error("AdminKpiCard: /api/events failed", txt);
+          } else {
+            const data = txt ? JSON.parse(txt) : {};
+            totalEvents =
+              typeof data.total === "number"
+                ? data.total
+                : Array.isArray(data.rows)
+                ? data.rows.length
+                : 0;
+          }
+        } catch (err) {
+          console.error("AdminKpiCard: error loading /api/events", err);
+        }
+
+        // 2) pre-contract pipeline (events-service /admin/events/pre-contract)
+        try {
+          const res = await fetch("/api/admin/events/pre-contract", {
+            cache: "no-store",
+            credentials: "include",
+          });
+          const txt = await res.text();
+          if (!res.ok) {
+            console.error(
+              "AdminKpiCard: /api/admin/events/pre-contract failed",
+              txt
+            );
+            if (!cancelled) {
+              setEventsError(
+                "Nu s-au putut încărca datele de pre-contract pentru evenimente."
+              );
+            }
+          } else {
+            const data = txt ? JSON.parse(txt) : {};
+            const rows = Array.isArray(data.rows) ? data.rows : [];
+
+            for (const row of rows) {
+              const status = row.preContractStatus || "no_activity";
+              if (preContract[status] != null) {
+                preContract[status] += 1;
+              }
+              if (row.isAtRisk) {
+                preContract.atRisk += 1;
+              }
+            }
+          }
+        } catch (err) {
+          console.error(
+            "AdminKpiCard: error loading pre-contract pipeline",
+            err
+          );
+          if (!cancelled) {
+            setEventsError(
+              "Nu s-au putut încărca datele de pre-contract pentru evenimente."
+            );
+          }
+        }
+
+        if (!cancelled) {
+          setEventsStats({
+            total: totalEvents,
+            preContract,
+          });
+        }
+      } catch (err) {
+        console.error("AdminKpiCard: events stats unexpected error", err);
+        if (!cancelled) {
+          setEventsError("Eroare la agregarea statisticilor pentru evenimente.");
+        }
+      } finally {
+        if (!cancelled) {
+          setEventsLoading(false);
+        }
+      }
+    }
+
+    loadEvents();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const preContractTotal = useMemo(() => {
+    const p = eventsStats.preContract;
+    return (
+      p.no_activity +
+      p.invitations_sent +
+      p.in_negotiation +
+      p.providers_selected
+    );
+  }, [eventsStats.preContract]);
+
+  const eventsInPlanning = eventsStats.preContract.no_activity;
+  const eventsInPreContract =
+    eventsStats.preContract.invitations_sent +
+    eventsStats.preContract.in_negotiation;
+  const eventsWithProvidersSelected =
+    eventsStats.preContract.providers_selected;
+  const eventsAtRisk = eventsStats.preContract.atRisk;
+
+  const uncoveredEvents =
+    eventsStats.total > 0
+      ? Math.max(eventsStats.total - eventsWithProvidersSelected, 0)
+      : 0;
+
+  // =========================================================
+  // LOAD CLIENTS (admin / clients)
+  // =========================================================
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadClients() {
+      setClientsLoading(true);
+      setClientsError(null);
+
+      try {
+        const res = await fetch("/api/admin/clients?page=1&pageSize=1", {
+          cache: "no-store",
+          credentials: "include",
+        });
+        const txt = await res.text();
+        if (!res.ok) {
+          console.error("AdminKpiCard: /api/admin/clients failed", txt);
+          if (!cancelled) {
+            setClientsError(
+              "Nu s-au putut încărca statisticile pentru clienți."
+            );
+          }
+          return;
+        }
+
+        const data = txt ? JSON.parse(txt) : {};
+        let total = 0;
+
+        if (typeof data.total === "number") {
+          total = data.total;
+        } else if (Array.isArray(data.rows)) {
+          total = data.rows.length;
+        } else if (Array.isArray(data)) {
+          total = data.length;
+        }
+
+        if (!cancelled) {
+          setClientsStats({ total });
+        }
+      } catch (err) {
+        console.error("AdminKpiCard: error loading clients stats", err);
+        if (!cancelled) {
+          setClientsError(
+            "Nu s-au putut încărca statisticile pentru clienți."
+          );
+        }
+      } finally {
+        if (!cancelled) {
+          setClientsLoading(false);
+        }
+      }
+    }
+
+    loadClients();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // =========================================================
+  // RENDER
+  // =========================================================
 
   return (
     <Box>
@@ -151,102 +376,116 @@ export default function AdminKpiCard() {
         </Tabs>
       </Stack>
 
-      {loading && activeTab === "providers" && (
-        <LinearProgress sx={{ mb: 1.5 }} />
-      )}
-
-      {error && activeTab === "providers" && (
-        <Typography color="error" variant="body2" sx={{ mb: 1.5 }}>
-          {error}
-        </Typography>
-      )}
-
-      {/* TAB 1 – FURNIZORI */}
+      {/* ---------------- TAB PROVIDERS ---------------- */}
       {activeTab === "providers" && (
-        <Stack spacing={2}>
-          {/* total provideri */}
-          <Stack spacing={0.5}>
-            <Typography variant="h4">{stats.total}</Typography>
-            <Typography variant="body2" color="text.secondary">
-              provideri înregistrați în platformă
+        <>
+          {providersLoading && <LinearProgress sx={{ mb: 1.5 }} />}
+
+          {providersError && (
+            <Typography color="error" variant="body2" sx={{ mb: 1.5 }}>
+              {providersError}
             </Typography>
-          </Stack>
+          )}
 
-          {/* linia 1 KPI */}
-          <Stack
-            direction={{ xs: "column", sm: "row" }}
-            spacing={1.5}
-            sx={{ mt: 0.5 }}
-          >
-            <Box sx={metricBoxSx}>
-              <Typography variant="caption" color="text.secondary">
-                PROVIDERI ACTIVI
-              </Typography>
-              <Typography variant="h6" sx={{ mt: 0.5 }}>
-                {stats.active}
-              </Typography>
-              <Typography variant="caption" color="success.main">
-                {activePercent}% din total
-              </Typography>
-            </Box>
+          {!providersLoading && !providersError && (
+            <Stack spacing={2}>
+              {/* total provideri */}
+              <Stack spacing={0.5}>
+                <Typography variant="h4">{providerStats.total}</Typography>
+                <Typography variant="body2" color="text.secondary">
+                  provideri înregistrați în platformă
+                </Typography>
+              </Stack>
 
-            <Box sx={metricBoxSx}>
-              <Typography variant="caption" color="text.secondary">
-                ÎN AȘTEPTARE REVIEW
-              </Typography>
-              <Typography variant="h6" sx={{ mt: 0.5 }}>
-                {stats.pending}
-              </Typography>
-              <Typography variant="caption" color="warning.main">
-                {pendingPercent}% din total
-              </Typography>
-            </Box>
-          </Stack>
+              {/* linia 1 KPI */}
+              <Stack
+                direction={{ xs: "column", sm: "row" }}
+                spacing={1.5}
+                sx={{ mt: 0.5 }}
+              >
+                <Box sx={metricBoxSx}>
+                  <Typography variant="caption" color="text.secondary">
+                    PROVIDERI ACTIVI
+                  </Typography>
+                  <Typography variant="h6" sx={{ mt: 0.5 }}>
+                    {providerStats.active}
+                  </Typography>
+                  <Typography variant="caption" color="success.main">
+                    {activePercent}% din total
+                  </Typography>
+                </Box>
 
-          {/* linia 2 KPI */}
-          <Stack
-            direction={{ xs: "column", sm: "row" }}
-            spacing={1.5}
-          >
-            <Box sx={metricBoxSx}>
-              <Typography variant="caption" color="text.secondary">
-                PROVIDERI SUSPENDAȚI
-              </Typography>
-              <Typography variant="h6" sx={{ mt: 0.5 }}>
-                {stats.suspended}
-              </Typography>
-              <Typography variant="caption" color="error.main">
-                {suspendedPercent}% din total
-              </Typography>
-            </Box>
+                <Box sx={metricBoxSx}>
+                  <Typography variant="caption" color="text.secondary">
+                    ÎN AȘTEPTARE REVIEW
+                  </Typography>
+                  <Typography variant="h6" sx={{ mt: 0.5 }}>
+                    {providerStats.pending}
+                  </Typography>
+                  <Typography variant="caption" color="warning.main">
+                    {pendingPercent}% din total
+                  </Typography>
+                </Box>
+              </Stack>
 
-            <Box sx={metricBoxSx}>
-              <Typography variant="caption" color="text.secondary">
-                WATCHLIST
-              </Typography>
-              <Typography variant="h6" sx={{ mt: 0.5 }}>
-                {stats.watchlisted}
-              </Typography>
-              <Typography variant="caption" color="text.secondary">
-                {watchlistedPercent}% marcați important
-              </Typography>
-            </Box>
-          </Stack>
+              {/* linia 2 KPI */}
+              <Stack
+                direction={{ xs: "column", sm: "row" }}
+                spacing={1.5}
+              >
+                <Box sx={metricBoxSx}>
+                  <Typography variant="caption" color="text.secondary">
+                    PROVIDERI SUSPENDAȚI
+                  </Typography>
+                  <Typography variant="h6" sx={{ mt: 0.5 }}>
+                    {providerStats.suspended}
+                  </Typography>
+                  <Typography variant="caption" color="error.main">
+                    {suspendedPercent}% din total
+                  </Typography>
+                </Box>
 
-          <Typography variant="caption" color="text.secondary">
-            Distribuție rapidă: {activePercent}% activi, {pendingPercent}% în
-            review. Folosește watchlist-ul pentru furnizorii strategici.
-          </Typography>
-        </Stack>
+                <Box sx={metricBoxSx}>
+                  <Typography variant="caption" color="text.secondary">
+                    WATCHLIST
+                  </Typography>
+                  <Typography variant="h6" sx={{ mt: 0.5 }}>
+                    {providerStats.watchlisted}
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    {watchlistedPercent}% marcați important
+                  </Typography>
+                </Box>
+              </Stack>
+
+              <Typography variant="caption" color="text.secondary">
+                Distribuție rapidă: {activePercent}% activi, {pendingPercent}% în
+                review. Folosește watchlist-ul pentru furnizorii strategici.
+              </Typography>
+            </Stack>
+          )}
+        </>
       )}
 
-      {/* TAB 2 – EVENIMENTE (layout pregătit, de legat la API ulterior) */}
+      {/* ---------------- TAB EVENTS ---------------- */}
       {activeTab === "events" && (
         <Stack spacing={2}>
+          {eventsLoading && <LinearProgress sx={{ mb: 1.5 }} />}
+
+          {eventsError && (
+            <Typography color="error" variant="body2" sx={{ mb: 1.5 }}>
+              {eventsError}
+            </Typography>
+          )}
+
           <Stack spacing={0.5}>
-            <Typography variant="h4">0</Typography>
+            <Typography variant="h4">{eventsStats.total}</Typography>
             <Typography variant="body2" color="text.secondary">
-              evenimente înregistrate în platformă
+              evenimente înregistrate în platformă (toate rolurile)
+            </Typography>
+            <Typography variant="caption" color="text.secondary">
+              Dintre acestea, {preContractTotal} au activitate în fluxul
+              pre-contract (invitații, oferte, selecții).
             </Typography>
           </Stack>
 
@@ -260,41 +499,84 @@ export default function AdminKpiCard() {
                 ÎN PLANIFICARE
               </Typography>
               <Typography variant="h6" sx={{ mt: 0.5 }}>
-                0
+                {eventsInPlanning}
               </Typography>
               <Typography variant="caption" color="text.secondary">
-                – în curs de organizare
+                fără invitații trimise sau oferte primite
               </Typography>
             </Box>
 
             <Box sx={metricBoxSx}>
               <Typography variant="caption" color="text.secondary">
-                FINALIZATE
+                ÎN PRE-CONTRACT
               </Typography>
               <Typography variant="h6" sx={{ mt: 0.5 }}>
-                0
+                {eventsInPreContract}
               </Typography>
               <Typography variant="caption" color="text.secondary">
-                – cu feedback disponibil
+                invitații trimise și/sau oferte în negociere
+              </Typography>
+            </Box>
+
+            <Box sx={metricBoxSx}>
+              <Typography variant="caption" color="text.secondary">
+                FURNIZORI SELECTAȚI
+              </Typography>
+              <Typography variant="h6" sx={{ mt: 0.5 }}>
+                {eventsWithProvidersSelected}
+              </Typography>
+              <Typography variant="caption" color="text.secondary">
+                pregătite pentru generare de contract (MOD 03)
               </Typography>
             </Box>
           </Stack>
 
-          <Typography variant="caption" color="text.secondary">
-            Modulul de evenimente va afișa aici KPI reali (distribuție pe
-            status, tipuri de evenimente, volum lunar) imediat ce îl legăm la
-            endpoint-urile de stats.
-          </Typography>
+          <Stack
+            direction={{ xs: "column", sm: "row" }}
+            spacing={1.5}
+          >
+            <Box sx={metricBoxSx}>
+              <Typography variant="caption" color="text.secondary">
+                FĂRĂ FURNIZORI ALEȘI
+              </Typography>
+              <Typography variant="h6" sx={{ mt: 0.5 }}>
+                {uncoveredEvents}
+              </Typography>
+              <Typography variant="caption" color="text.secondary">
+                evenimente unde nu există încă assignment confirmat
+              </Typography>
+            </Box>
+
+            <Box sx={metricBoxSx}>
+              <Typography variant="caption" color="text.secondary">
+                EVENIMENTE „AT RISK”
+              </Typography>
+              <Typography variant="h6" sx={{ mt: 0.5 }}>
+                {eventsAtRisk}
+              </Typography>
+              <Typography variant="caption" color="text.secondary">
+                evenimente în următoarele 14 zile fără furnizori selectați
+              </Typography>
+            </Box>
+          </Stack>
         </Stack>
       )}
 
-      {/* TAB 3 – CLIENȚI (layout pregătit) */}
+      {/* ---------------- TAB CLIENTS ---------------- */}
       {activeTab === "clients" && (
         <Stack spacing={2}>
+          {clientsLoading && <LinearProgress sx={{ mb: 1.5 }} />}
+
+          {clientsError && (
+            <Typography color="error" variant="body2" sx={{ mb: 1.5 }}>
+              {clientsError}
+            </Typography>
+          )}
+
           <Stack spacing={0.5}>
-            <Typography variant="h4">0</Typography>
+            <Typography variant="h4">{clientsStats.total}</Typography>
             <Typography variant="body2" color="text.secondary">
-              clienți înregistrați în platformă
+              clienți înregistrați în platformă (rol CLIENT)
             </Typography>
           </Stack>
 
@@ -305,32 +587,46 @@ export default function AdminKpiCard() {
           >
             <Box sx={metricBoxSx}>
               <Typography variant="caption" color="text.secondary">
-                CLIENȚI ACTIVI
+                BAZĂ DE CLIENȚI
               </Typography>
               <Typography variant="h6" sx={{ mt: 0.5 }}>
-                0
+                {clientsStats.total}
               </Typography>
               <Typography variant="caption" color="text.secondary">
-                – au cel puțin un eveniment în lucru
+                total conturi cu rol CLIENT
               </Typography>
             </Box>
 
             <Box sx={metricBoxSx}>
               <Typography variant="caption" color="text.secondary">
-                CLIENȚI RECURENȚI
+                ACTIVITATE (coming soon)
               </Typography>
               <Typography variant="h6" sx={{ mt: 0.5 }}>
                 0
               </Typography>
               <Typography variant="caption" color="text.secondary">
-                – cu &gt;= 2 evenimente în istoric
+                – clienți cu cel puțin un eveniment în lucru (după integrarea
+                completă MOD 03)
+              </Typography>
+            </Box>
+
+            <Box sx={metricBoxSx}>
+              <Typography variant="caption" color="text.secondary">
+                RECURENȚĂ (coming soon)
+              </Typography>
+              <Typography variant="h6" sx={{ mt: 0.5 }}>
+                0
+              </Typography>
+              <Typography variant="caption" color="text.secondary">
+                – clienți cu &gt;= 2 evenimente în istoric (după modul CRM)
               </Typography>
             </Box>
           </Stack>
 
           <Typography variant="caption" color="text.secondary">
-            În modulul Clienți vom conecta acest tab la statisticile reale:
-            retenție, evenimente per client și conversii din lead-uri.
+            În modulul Clienți vom putea afișa KPI reali de retenție și
+            conversii (lead → client → eveniment), pe baza users-service +
+            events-service.
           </Typography>
         </Stack>
       )}

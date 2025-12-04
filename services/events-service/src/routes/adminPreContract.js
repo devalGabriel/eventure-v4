@@ -1,6 +1,7 @@
 // services/events-service/src/routes/adminPreContract.js
 import { prisma } from '../db.js';
 import { BadRequest } from '../errors.js';
+import { isAdminUser } from '../services/authz.js';
 
 // mic adapter ca în celelalte rute
 function makeReply(res) {
@@ -8,10 +9,6 @@ function makeReply(res) {
     f.send = (body) => res.json(body);
     f.code = (status) => ({ send: (body) => res.status(status).json(body) });
     return f;
-}
-
-function isAdmin(user) {
-    return Array.isArray(user?.roles) && user.roles.includes('ADMIN');
 }
 
 // Heuristici pentru status global pre-contract
@@ -39,9 +36,9 @@ export async function adminPreContractRoutes(app) {
     app.get('/admin/events/pre-contract', async (req, res) => {
         const reply = makeReply(res);
         const user = await app.verifyAuth(req);
-        if (!isAdmin(user)) {
-            return reply.code(403).send({ error: 'Forbidden' });
-        }
+if (!isAdminUser(user)) {
+  return reply.code(403).send({ error: 'Forbidden' });
+}
 
         const { from, to, clientId, providerId, status } = req.query || {};
 
@@ -170,14 +167,32 @@ export async function adminPreContractRoutes(app) {
             rows = rows.filter((r) => r.providersInvolved.includes(providerId));
         }
 
-        if (status) {
+                if (status) {
             rows = rows.filter((r) => r.preContractStatus === status);
+        }
+
+        // mic log structurat pentru observabilitate
+        try {
+            console.log(
+                JSON.stringify({
+                    ts: new Date().toISOString(),
+                    service: 'events-service',
+                    route: 'GET /admin/events/pre-contract',
+                    actorId: user?.id ?? user?.userId ?? null,
+                    filters: { from, to, clientId, providerId, status },
+                    total: rows.length,
+                })
+            );
+        } catch (e) {
+            // dacă logging-ul pică nu vrem să stricăm răspunsul
+            console.warn('adminPreContract log failed', e?.message || e);
         }
 
         return reply.send({
             rows,
             total: rows.length
         });
+
     });
 
 }

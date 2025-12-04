@@ -5,6 +5,13 @@ import {
   ensureProviderOrAdmin,
 } from '../services/eventsAccess.js';
 import { sendNotification } from '../services/notificationsClient.js';
+import { auditEvent } from '../services/audit.js';
+import {
+  isAdminUser,
+  isProviderUser,
+  isClientUser,
+  getUserId,
+} from '../services/authz.js';
 
 // adapter mic pentru a păstra semantica Fastify reply pe Express
 function makeReply(res) {
@@ -59,7 +66,7 @@ async function applyOfferAcceptedCascade(offerId, decision) {
           id: { not: offer.id },
           eventId: offer.eventId,
           OR: [
-            { needId },              // direct pe ofertă
+            { needId }, // direct pe ofertă
             { invitation: { needId } }, // fallback via invitație
           ],
         },
@@ -104,15 +111,9 @@ export async function offersRoutes(app) {
 
     const { invitationId } = req.query;
 
-    const providerId =
-      user.userId?.toString() ||
-      user.id?.toString() ||
-      '';
+    const providerId = getUserId(user);
 
-    const baseWhere =
-      user.role === 'provider'
-        ? { providerId }
-        : {};
+    const baseWhere = isProviderUser(user) ? { providerId } : {};
 
     const where = invitationId
       ? { ...baseWhere, invitationId: String(invitationId) }
@@ -150,12 +151,9 @@ export async function offersRoutes(app) {
     const body = req.body || {};
     const totalCost =
       body.totalCost != null ? Number(body.totalCost) : null;
-    const providerId =
-      user.userId?.toString() ||
-      user.id?.toString() ||
-      '';
+    const providerId = getUserId(user);
 
-      let need = null;
+    let need = null;
     if (body.needId) {
       need = await prisma.eventNeed.findUnique({
         where: { id: body.needId },
@@ -195,11 +193,24 @@ export async function offersRoutes(app) {
       },
     });
 
+    auditEvent('offer.created', {
+      actorId: providerId,
+      eventId,
+      offerId: created.id,
+      providerId: created.providerId,
+      providerGroupId: created.providerGroupId,
+      needId: created.needId,
+      totalCost: created.totalCost,
+      currency: created.currency,
+      source: 'GENERIC',
+    });
+
     return reply.code(201).send(normalizeOfferForResponse(created));
   });
 
   // Provider: creează o ofertă ca răspuns la o invitație
-  app.post('/events/:eventId/invitations/:invitationId/offers',
+  app.post(
+    '/events/:eventId/invitations/:invitationId/offers',
     async (req, res) => {
       const reply = makeReply(res);
       const user = await app.verifyAuth(req);
@@ -216,9 +227,7 @@ export async function offersRoutes(app) {
       }
 
       // validare status invitație
-      if (
-        ['DECLINED', 'CANCELLED', 'EXPIRED'].includes(invitation.status)
-      ) {
+      if (['DECLINED', 'CANCELLED', 'EXPIRED'].includes(invitation.status)) {
         throw BadRequest(
           `Cannot create offer for invitation with status ${invitation.status}`
         );
@@ -232,7 +241,7 @@ export async function offersRoutes(app) {
         throw BadRequest('Invitation reply deadline is over');
       }
 
-            // validare need (deadline + lock)
+      // validare need (deadline + lock)
       let need = null;
       if (invitation.needId) {
         need = await prisma.eventNeed.findUnique({
@@ -261,9 +270,9 @@ export async function offersRoutes(app) {
 
       // provider poate răspunde doar la invitațiile lui
       if (
-        user.role === 'provider' &&
+        isProviderUser(user) &&
         invitation.providerId &&
-        invitation.providerId !== user.id?.toString()
+        invitation.providerId !== getUserId(user)
       ) {
         return reply.code(403).send({ error: 'Forbidden' });
       }
@@ -271,10 +280,8 @@ export async function offersRoutes(app) {
       const body = req.body || {};
       const totalCost =
         body.totalCost != null ? Number(body.totalCost) : null;
-      const providerId =
-        user.userId?.toString() ||
-        user.id?.toString() ||
-        '';
+      const providerId = getUserId(user);
+
       const created = await prisma.eventOffer.create({
         data: {
           eventId,
@@ -295,6 +302,19 @@ export async function offersRoutes(app) {
         },
       });
 
+      auditEvent('offer.created', {
+        actorId: providerId,
+        eventId,
+        offerId: created.id,
+        providerId: created.providerId,
+        providerGroupId: created.providerGroupId,
+        needId: created.needId || invitation.needId,
+        invitationId,
+        totalCost: created.totalCost,
+        currency: created.currency,
+        source: 'INVITATION',
+      });
+
       return reply.code(201).send(normalizeOfferForResponse(created));
     }
   );
@@ -307,13 +327,13 @@ export async function offersRoutes(app) {
 
     let where = { eventId };
 
-    if (user.role === 'provider') {
+    if (isProviderUser(user)) {
       where = {
         ...where,
-        providerId: user.userId?.toString() || '',
+        providerId: getUserId(user),
       };
-    } else if (user.role !== 'admin') {
-      // client: trebuie să fie owner sau participant
+    } else if (!isAdminUser(user)) {
+      // client/alt rol: trebuie să fie owner sau participant
       const ev = await ensureEventOwnerOrAdmin(user, eventId, reply);
       if (!ev) return;
     }
@@ -339,10 +359,9 @@ export async function offersRoutes(app) {
     const existing = await prisma.eventOffer.findUnique({ where: { id } });
     if (!existing) throw NotFound('Offer not found');
 
-    if (
-      user.role === 'provider' &&
-      existing.providerId !== user.userId?.toString()
-    ) {
+    const authUserId = getUserId(user);
+
+    if (isProviderUser(user) && existing.providerId !== authUserId) {
       return reply.code(403).send({ error: 'Forbidden' });
     }
 
@@ -362,7 +381,7 @@ export async function offersRoutes(app) {
     if (body.detailsJson !== undefined) {
       data.detailsJson = body.detailsJson;
     }
-    if(body.needId !== undefined) {
+    if (body.needId !== undefined) {
       data.needId = body.needId;
     }
     if (body.status) {
@@ -421,6 +440,15 @@ export async function offersRoutes(app) {
       }
     }
 
+    auditEvent('offer.updated', {
+      actorId: getUserId(user) || null,
+      eventId: updated.eventId,
+      offerId: updated.id,
+      providerId: updated.providerId,
+      prevStatus,
+      newStatus: updated.status,
+    });
+
     return reply.send(normalizeOfferForResponse(updated));
   });
 
@@ -440,23 +468,22 @@ export async function offersRoutes(app) {
       throw NotFound('Offer not found for this event');
     }
 
+    const authUserId = getUserId(user);
+
     // provider poate modifica doar propriile oferte
-    if (
-      user.role === 'provider' &&
-      offer.providerId !== user.userId?.toString()
-    ) {
+    if (isProviderUser(user) && offer.providerId !== authUserId) {
       return reply.code(403).send({ error: 'Forbidden' });
     }
 
     // client poate modifica doar oferte pentru evenimentele lui
-    if (user.role === 'client') {
+    if (isClientUser(user)) {
       const ev = await ensureEventOwnerOrAdmin(user, eventId, reply);
       if (!ev) return;
     }
 
     const prevStatus = offer.status;
 
-        let updated;
+    let updated;
 
     if (OFFER_ACCEPT_STATUSES.includes(status)) {
       // 👇 aplicăm regulă: o singură ofertă acceptată pe need
@@ -505,42 +532,6 @@ export async function offersRoutes(app) {
     }
 
     return reply.send(normalizeOfferForResponse(updated));
-
-
-    if (
-      status !== prevStatus &&
-      (status === 'SENT' || status === 'REVISED')
-    ) {
-      const event = await prisma.event.findUnique({
-        where: { id: updated.eventId },
-        select: { id: true, name: true, clientId: true },
-      });
-
-      if (event && event.clientId) {
-        await sendNotification({
-          userId: event.clientId,
-          type:
-            status === 'SENT'
-              ? 'EVENT_OFFER_SUBMITTED'
-              : 'EVENT_OFFER_REVISED',
-          title:
-            status === 'SENT'
-              ? 'Ofertă nouă primită'
-              : 'Ofertă actualizată',
-          body:
-            status === 'SENT'
-              ? `Ai o ofertă nouă pentru evenimentul "${event.name}".`
-              : `Ai o ofertă actualizată pentru evenimentul "${event.name}".`,
-          meta: {
-            eventId: updated.eventId,
-            offerId: updated.id,
-            providerId: updated.providerId,
-          },
-        });
-      }
-    }
-
-    return reply.send(normalizeOfferForResponse(updated));
   });
 
   // Client: decizie explicită pe ofertă (ACCEPTED / DECLINED) din ecranul de invitații
@@ -553,7 +544,7 @@ export async function offersRoutes(app) {
     const offer = await prisma.eventOffer.findUnique({ where: { id } });
     if (!offer) throw NotFound('Offer not found');
 
-    if (user.role !== 'admin') {
+    if (!isAdminUser(user)) {
       const ev = await ensureEventOwnerOrAdmin(user, offer.eventId, reply);
       if (!ev) return;
     }
@@ -572,7 +563,7 @@ export async function offersRoutes(app) {
       });
     }
 
-        const normalizedDecision = String(decision || '');
+    const normalizedDecision = String(decision || '');
 
     let updated;
     if (OFFER_ACCEPT_STATUSES.includes(normalizedDecision)) {
@@ -588,6 +579,14 @@ export async function offersRoutes(app) {
       });
     }
 
+    auditEvent('offer.decisionApplied', {
+      actorId: getUserId(user) || null,
+      eventId: updated.eventId,
+      offerId: updated.id,
+      providerId: updated.providerId,
+      decision: normalizedDecision,
+    });
+
     const event = await prisma.event.findUnique({
       where: { id: updated.eventId },
       select: { id: true, name: true, clientId: true },
@@ -596,7 +595,6 @@ export async function offersRoutes(app) {
     const isAccepted =
       normalizedDecision === 'ACCEPTED' ||
       normalizedDecision === 'ACCEPTED_BY_CLIENT';
-
 
     await sendNotification({
       userId: updated.providerId,

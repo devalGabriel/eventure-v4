@@ -3,6 +3,7 @@ import express from 'express';
 import { prisma } from '../db.js';
 import { BadRequest, NotFound } from '../errors.js';
 import { sendNotification } from '../services/notificationsClient.js';
+import { isAdminUser } from '../services/authz.js';
 
 /**
  * Helper: extrage authUserId din structura user-ului venit din app.verifyAuth.
@@ -40,7 +41,7 @@ async function ensureEventAccessOrThrow(user, eventId) {
   }
 
   // admin vede tot
-  if (user.role === 'admin') return ev;
+  if (isAdminUser(user)) return ev;
 
   // client owner
   if (ev.clientId === authUserId) return ev;
@@ -186,8 +187,8 @@ export function messagesRoutes(app) {
               offerId: null,
               messageId: created.id,
             },
-          }),
-        ),
+          })
+        )
       );
 
       return res.status(201).json(created);
@@ -265,8 +266,8 @@ export function messagesRoutes(app) {
               offerId,
               messageId: created.id,
             },
-          }),
-        ),
+          })
+        )
       );
 
       return res.status(201).json(created);
@@ -293,7 +294,7 @@ export function messagesRoutes(app) {
       if (!ev) throw NotFound('Event not found');
 
       // doar autorul sau admin-ul pot șterge
-      if (user.role !== 'admin' && msg.authorId !== authUserId) {
+      if (!isAdminUser(user) && msg.authorId !== authUserId) {
         const err = new Error('Forbidden');
         err.statusCode = 403;
         throw err;

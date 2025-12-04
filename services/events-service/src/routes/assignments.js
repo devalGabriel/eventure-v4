@@ -1,7 +1,16 @@
 // services/events-service/src/routes/assignments.js
 import { prisma } from '../db.js';
 import { BadRequest, NotFound } from '../errors.js';
-import { ensureEventOwnerOrAdmin, ensureProviderOrAdmin } from '../services/eventsAccess.js';
+import {
+  ensureEventOwnerOrAdmin,
+  ensureProviderOrAdmin,
+} from '../services/eventsAccess.js';
+import {
+  isAdminUser,
+  isProviderUser,
+  getUserId,
+} from '../services/authz.js';
+import { sendNotification } from '../services/notificationsClient.js';
 
 function makeReply(res) {
   const f = (body) => res.json(body);
@@ -30,12 +39,12 @@ export function assignmentsRoutes(app) {
     const { eventId } = req.params;
 
     const ev = await ensureEventOwnerOrAdmin(user, eventId, reply);
-    if (!ev && user.role !== 'admin') return;
+    if (!ev && !isAdminUser(user)) return;
 
     const body = req.body || {};
     const providerId = body.providerId || null;
     const providerGroupId = body.providerGroupId || null;
-    console.log("body:", body);
+
     if (!providerId && !providerGroupId) {
       throw BadRequest('providerId or providerGroupId is required');
     }
@@ -49,71 +58,70 @@ export function assignmentsRoutes(app) {
         : 'SHORTLISTED';
 
     // VALIDARE: trebuie ofertă validă SAU invitație acceptată
-     let sourceOfferId = body.sourceOfferId || null;
+    let sourceOfferId = body.sourceOfferId || null;
 
-  const OFFER_OK_STATUSES = ['SENT', 'ACCEPTED_BY_CLIENT'];
+    const OFFER_OK_STATUSES = ['SENT', 'ACCEPTED_BY_CLIENT'];
 
-  let offer = null;
-  if (sourceOfferId) {
-    offer = await prisma.eventOffer.findUnique({ where: { id: sourceOfferId } });
-    if (!offer || offer.eventId !== eventId) {
-      throw BadRequest('sourceOfferId must belong to the same event');
+    let offer = null;
+    if (sourceOfferId) {
+      offer = await prisma.eventOffer.findUnique({ where: { id: sourceOfferId } });
+      if (!offer || offer.eventId !== eventId) {
+        throw BadRequest('sourceOfferId must belong to the same event');
+      }
+      if (!OFFER_OK_STATUSES.includes(offer.status)) {
+        throw BadRequest(
+          `sourceOfferId must have status one of: ${OFFER_OK_STATUSES.join(', ')}`
+        );
+      }
+    } else {
+      offer = await prisma.eventOffer.findFirst({
+        where: {
+          eventId,
+          providerId,
+          status: { in: OFFER_OK_STATUSES },
+        },
+        orderBy: { createdAt: 'desc' },
+      });
+      if (!offer) {
+        throw BadRequest(
+          'Cannot create assignment: provider has no valid offer (SENT / ACCEPTED_BY_CLIENT) for this event'
+        );
+      }
+      sourceOfferId = offer.id;
     }
-    if (!OFFER_OK_STATUSES.includes(offer.status)) {
-      throw BadRequest(
-        `sourceOfferId must have status one of: ${OFFER_OK_STATUSES.join(', ')}`
-      );
-    }
-  } else {
-    offer = await prisma.eventOffer.findFirst({
+
+    const existing = await prisma.eventProviderAssignment.findFirst({
       where: {
         eventId,
         providerId,
-        status: { in: OFFER_OK_STATUSES },
-      },
-      orderBy: { createdAt: 'desc' },
-    });
-    if (!offer) {
-      throw BadRequest(
-        'Cannot create assignment: provider has no valid offer (SENT / ACCEPTED_BY_CLIENT) for this event'
-      );
-    }
-    sourceOfferId = offer.id;
-  }
-
-      const existing = await prisma.eventProviderAssignment.findFirst({
-    where: {
-      eventId,
-      providerId,
-      providerGroupId,
-    },
-  });
-
-  let result;
-  if (existing) {
-    result = await prisma.eventProviderAssignment.update({
-      where: { id: existing.id },
-      data: {
-        status,
-        sourceOfferId,
-        notes: body.notes ?? existing.notes,
-      },
-    });
-  } else {
-    result = await prisma.eventProviderAssignment.create({
-      data: {
-        eventId,
-        providerId,
         providerGroupId,
-        status,
-        sourceOfferId,
-        notes: body.notes || null,
       },
     });
-  }
 
-  return reply.code(existing ? 200 : 201).send(result);
+    let result;
+    if (existing) {
+      result = await prisma.eventProviderAssignment.update({
+        where: { id: existing.id },
+        data: {
+          status,
+          sourceOfferId,
+          notes: body.notes ?? existing.notes,
+        },
+      });
+    } else {
+      result = await prisma.eventProviderAssignment.create({
+        data: {
+          eventId,
+          providerId,
+          providerGroupId,
+          status,
+          sourceOfferId,
+          notes: body.notes || null,
+        },
+      });
+    }
 
+    return reply.code(existing ? 200 : 201).send(result);
   });
 
   // LIST pe eveniment (client owner, provider implicat, admin)
@@ -124,12 +132,12 @@ export function assignmentsRoutes(app) {
 
     let where = { eventId };
 
-    if (user.role === 'provider') {
+    if (isProviderUser(user)) {
       where = {
         ...where,
-        providerId: user.userId?.toString() || '',
+        providerId: getUserId(user),
       };
-    } else if (user.role !== 'admin') {
+    } else if (!isAdminUser(user)) {
       const ev = await ensureEventOwnerOrAdmin(user, eventId, reply);
       if (!ev) return;
     }
@@ -153,17 +161,26 @@ export function assignmentsRoutes(app) {
       throw BadRequest('Invalid status');
     }
 
-    const asg = await prisma.eventProviderAssignment.findUnique({ where: { id } });
+    const asg = await prisma.eventProviderAssignment.findUnique({
+      where: { id },
+      include: {
+        event: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+      },
+    });
     if (!asg) throw NotFound('Assignment not found');
 
     // doar client owner sau admin pot schimba status assignment
-    if (user.role !== 'admin') {
+    if (!isAdminUser(user)) {
       const ev = await ensureEventOwnerOrAdmin(user, asg.eventId, reply);
       if (!ev) return;
     }
 
-    const allowedNext =
-      ASSIGNMENT_TRANSITIONS[asg.status] || [asg.status];
+    const allowedNext = ASSIGNMENT_TRANSITIONS[asg.status] || [asg.status];
     if (!allowedNext.includes(status)) {
       throw BadRequest(
         `Invalid transition from ${asg.status} to ${status}`
@@ -175,22 +192,26 @@ export function assignmentsRoutes(app) {
       data: { status },
     });
 
-    if (nextStatus === 'SELECTED' || nextStatus === 'CONFIRMED_PRE_CONTRACT') {
-      await sendNotification({
-        userId: assignment.providerId,
-        type: 'EVENT_PROVIDER_SELECTED',
-        title:
-          nextStatus === 'SELECTED'
-            ? 'Ai fost selectat pentru un eveniment'
-            : 'Ești confirmat pre-contract',
-        body: `Eveniment: "${assignment.event.name}". Status: ${nextStatus}.`,
-        meta: {
-          eventId: assignment.eventId,
-          assignmentId: assignment.id,
-          status: nextStatus,
-        },
-      });
+    // notificăm providerul la SELECTED / CONFIRMED_PRE_CONTRACT
+    if (status === 'SELECTED' || status === 'CONFIRMED_PRE_CONTRACT') {
+      if (asg.providerId) {
+        await sendNotification({
+          userId: asg.providerId,
+          type: 'EVENT_PROVIDER_SELECTED',
+          title:
+            status === 'SELECTED'
+              ? 'Ai fost selectat pentru un eveniment'
+              : 'Ești confirmat pre-contract',
+          body: `Eveniment: "${asg.event?.name || ''}". Status: ${status}.`,
+          meta: {
+            eventId: asg.eventId,
+            assignmentId: asg.id,
+            status,
+          },
+        });
+      }
     }
+
     return reply.send(updated);
   });
 
@@ -201,7 +222,7 @@ export function assignmentsRoutes(app) {
     const ok = await ensureProviderOrAdmin(user, reply);
     if (!ok) return;
 
-    const providerId = user.userId?.toString() || '';
+    const providerId = getUserId(user);
 
     const rows = await prisma.eventProviderAssignment.findMany({
       where: {

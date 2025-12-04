@@ -2,6 +2,7 @@
 import { prisma } from '../db.js';
 import { BadRequest, NotFound } from '../errors.js';
 import { ensureProviderAccess } from '../services/providerAccess.js';
+import { isAdminUser, getUserId } from '../services/authz.js';
 
 function makeReply(res) {
   const f = (body) => res.json(body);
@@ -19,7 +20,8 @@ export async function groupsRoutes(app) {
 
     const page = Number(req.query.page || 1);
     const pageSize = Math.min(100, Number(req.query.pageSize || 20));
-    const where = (user.role === 'admin') ? {} : { ownerId: user.userId };
+    const ownerId = getUserId(user);
+    const where = isAdminUser(user) ? {} : { ownerId };
 
     const [rows, total] = await Promise.all([
       prisma.serviceGroup.findMany({
@@ -27,9 +29,9 @@ export async function groupsRoutes(app) {
         orderBy: { createdAt: 'desc' },
         skip: (page - 1) * pageSize,
         take: pageSize,
-        include: { members: true }
+        include: { members: true },
       }),
-      prisma.serviceGroup.count({ where })
+      prisma.serviceGroup.count({ where }),
     ]);
 
     return reply.send({ rows, total, page, pageSize });
@@ -44,15 +46,17 @@ export async function groupsRoutes(app) {
     const { name, description, price, currency, status } = req.body || {};
     if (!name || name.length < 2) throw BadRequest('name is required');
 
+    const ownerId = getUserId(user);
+
     const created = await prisma.serviceGroup.create({
       data: {
-        ownerId: user.userId,
+        ownerId,
         name,
         description: description || null,
         price: price ? new prisma.Prisma.Decimal(price) : null,
         currency: currency || 'RON',
-        status: status || 'ACTIVE'
-      }
+        status: status || 'ACTIVE',
+      },
     });
     return reply.send(created);
   });
@@ -66,10 +70,15 @@ export async function groupsRoutes(app) {
     const { id } = req.params;
     const g = await prisma.serviceGroup.findUnique({
       where: { id },
-      include: { members: true }
+      include: { members: true },
     });
     if (!g) throw NotFound('Group not found');
-    if (user.role !== 'admin' && g.ownerId !== user.userId) return reply.code(403).send({ error: 'Forbidden' });
+
+    const ownerId = getUserId(user);
+    if (!isAdminUser(user) && g.ownerId !== ownerId) {
+      return reply.code(403).send({ error: 'Forbidden' });
+    }
+
     return reply.send(g);
   });
 
@@ -82,7 +91,11 @@ export async function groupsRoutes(app) {
     const { id } = req.params;
     const g = await prisma.serviceGroup.findUnique({ where: { id } });
     if (!g) throw NotFound('Group not found');
-    if (user.role !== 'admin' && g.ownerId !== user.userId) return reply.code(403).send({ error: 'Forbidden' });
+
+    const ownerId = getUserId(user);
+    if (!isAdminUser(user) && g.ownerId !== ownerId) {
+      return reply.code(403).send({ error: 'Forbidden' });
+    }
 
     const { name, description, price, currency, status } = req.body || {};
     const updated = await prisma.serviceGroup.update({
@@ -90,10 +103,12 @@ export async function groupsRoutes(app) {
       data: {
         ...(name ? { name } : {}),
         ...(description !== undefined ? { description } : {}),
-        ...(price !== undefined ? { price: price ? new prisma.Prisma.Decimal(price) : null } : {}),
+        ...(price !== undefined
+          ? { price: price ? new prisma.Prisma.Decimal(price) : null }
+          : {}),
         ...(currency ? { currency } : {}),
-        ...(status ? { status } : {})
-      }
+        ...(status ? { status } : {}),
+      },
     });
     return reply.send(updated);
   });
@@ -107,7 +122,11 @@ export async function groupsRoutes(app) {
     const { id } = req.params;
     const g = await prisma.serviceGroup.findUnique({ where: { id } });
     if (!g) throw NotFound('Group not found');
-    if (user.role !== 'admin' && g.ownerId !== user.userId) return reply.code(403).send({ error: 'Forbidden' });
+
+    const ownerId = getUserId(user);
+    if (!isAdminUser(user) && g.ownerId !== ownerId) {
+      return reply.code(403).send({ error: 'Forbidden' });
+    }
 
     await prisma.groupMember.deleteMany({ where: { groupId: id } });
     await prisma.serviceGroup.delete({ where: { id } });
@@ -126,10 +145,19 @@ export async function groupsRoutes(app) {
 
     const g = await prisma.serviceGroup.findUnique({ where: { id } });
     if (!g) throw NotFound('Group not found');
-    if (user.role !== 'admin' && g.ownerId !== user.userId) return reply.code(403).send({ error: 'Forbidden' });
+
+    const ownerId = getUserId(user);
+    if (!isAdminUser(user) && g.ownerId !== ownerId) {
+      return reply.code(403).send({ error: 'Forbidden' });
+    }
 
     const created = await prisma.groupMember.create({
-      data: { groupId: id, userId, role: role || null, note: note || null }
+      data: {
+        groupId: id,
+        userId,
+        role: role || null,
+        note: note || null,
+      },
     });
     return reply.send(created);
   });
@@ -143,7 +171,11 @@ export async function groupsRoutes(app) {
     const { id, memberId } = req.params;
     const g = await prisma.serviceGroup.findUnique({ where: { id } });
     if (!g) throw NotFound('Group not found');
-    if (user.role !== 'admin' && g.ownerId !== user.userId) return reply.code(403).send({ error: 'Forbidden' });
+
+    const ownerId = getUserId(user);
+    if (!isAdminUser(user) && g.ownerId !== ownerId) {
+      return reply.code(403).send({ error: 'Forbidden' });
+    }
 
     await prisma.groupMember.delete({ where: { id: memberId } });
     return reply.send({ ok: true });

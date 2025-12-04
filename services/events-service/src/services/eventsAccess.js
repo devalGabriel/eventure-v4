@@ -1,6 +1,7 @@
 // services/events-service/src/services/eventsAccess.js
 import { prisma } from '../db.js';
 import { NotFound } from '../errors.js';
+import { isAdminUser, isProviderUser } from './authz.js';
 
 // helper unificat pentru userId (id poate veni ca userId sau id)
 function getUserIdFromUser(user) {
@@ -43,12 +44,10 @@ export async function ensureEventOwnerOrAdmin(user, eventId, reply) {
     reply.code(404).send({ error: 'Event not found' });
     return null;
   }
-
-  // admin → full access
-  if (user?.role === 'admin') {
+  // admin → full access (indiferent dacă rolul e în role/roles)
+  if (isAdminUser(user)) {
     return ev;
   }
-
   const userId = getUserIdFromUser(user);
   if (!userId) {
     reply.code(401).send({ error: 'Unauthenticated' });
@@ -81,7 +80,7 @@ export async function ensureEventOwnerOrAdmin(user, eventId, reply) {
  * Verifică dacă user-ul este PROVIDER sau ADMIN
  */
 export async function ensureProviderOrAdmin(user, reply) {
-  if (user?.role === 'admin' || user?.role === 'provider') return true;
+  if (isAdminUser(user) || isProviderUser(user)) return true;
   reply.code(403).send({ error: 'Provider access required' });
   return false;
 }

@@ -4,6 +4,8 @@ import {
   ensureEventOwnerOrAdmin,
   ensureProviderOrAdmin,
 } from "../services/eventsAccess.js";
+import { auditEvent } from "../services/audit.js";
+import { isAdminUser, getUserId } from "../services/authz.js";
 
 function makeReply(res) {
   const f = (body) => res.json(body);
@@ -138,6 +140,18 @@ export async function invitationsRoutes(app) {
         budgetCurrency: budgetCurrency || ev.currency || null,
       },
     });
+    auditEvent("invitation.created", {
+      actorId: user?.userId || user?.id || null,
+      eventId: ev.id,
+      invitationId: inv.id,
+      clientId: inv.clientId,
+      providerId: inv.providerId,
+      providerGroupId: inv.providerGroupId,
+      needId: inv.needId,
+      replyDeadline: inv.replyDeadline,
+      proposedBudget: inv.proposedBudget,
+      budgetCurrency: inv.budgetCurrency,
+    });
 
     return reply.send(inv);
   });
@@ -213,6 +227,19 @@ export async function invitationsRoutes(app) {
       const result = await prisma.eventInvitation.createMany({
         data,
         skipDuplicates: true,
+      });
+
+      auditEvent("invitation.bulkCreated", {
+        actorId: user?.userId || user?.id || null,
+        eventId: ev.id,
+        providerIds: toCreate.map((row) => row.providerId).filter(Boolean),
+        groupIds: toCreate
+          .map((row) => row.providerGroupId)
+          .filter(Boolean),
+        needId: needId || null,
+        createdCount: result.count ?? toCreate.length,
+        skippedCount: ids.length - toCreate.length,
+        totalRequested: ids.length,
       });
 
       return reply.send({
@@ -310,8 +337,8 @@ export async function invitationsRoutes(app) {
     }
 
     const roles = user.roles || [];
-    const isAdmin = roles.includes("ADMIN") || user.isAdmin;
-    const providerUserId = String(user.userId || user.id);
+    const isAdmin = isAdminUser(user);
+    const providerUserId = getUserId(user);
 
     const isClient =
       String(inv.clientId) === String(user.id) ||
@@ -344,8 +371,8 @@ export async function invitationsRoutes(app) {
     }
 
     const roles = user.roles || [];
-    const isAdmin = roles.includes("ADMIN") || user.isAdmin;
-    const providerUserId = String(user.userId || user.id);
+    const providerUserId = getUserId(user);
+    const isAdmin = isAdminUser(user);
 
     if (!isAdmin && String(inv.providerId) !== providerUserId) {
       return reply.code(403).send({ error: "Forbidden" });
@@ -363,7 +390,16 @@ export async function invitationsRoutes(app) {
       data: { status: normalized, decidedAt: new Date() },
     });
 
+    auditEvent("invitation.decision", {
+      actorId: providerUserId,
+      eventId: inv.eventId,
+      invitationId: inv.id,
+      providerId: inv.providerId,
+      decision: normalized,
+    });
+
     // logica de buget la ACCEPTED se face la nivel de OFFER, nu de invitație
     return reply.send(upd);
+
   });
 }

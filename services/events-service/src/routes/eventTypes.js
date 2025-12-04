@@ -1,5 +1,6 @@
 // src/routes/eventTypes.js
 import { prisma } from '../db.js';
+import { isAdminUser } from '../services/authz.js';
 
 async function getEventTypeTemplateByType(type) {
   if (!type) return null;
@@ -24,12 +25,12 @@ export async function eventTypesRoutes(app) {
   // --- Admin: listă completă cu JSON-urile de config ---
   app.get('/admin/event-types', async (req, res) => {
     const user = await app.verifyAuth(req);
-    if (!user || user.role !== 'admin') {
+    if (!isAdminUser(user)) {
       return res.status(403).json({ error: 'Forbidden' });
     }
 
     const items = await prisma.eventTypeTemplate.findMany({
-      orderBy: { type: 'asc' }
+      orderBy: { type: 'asc' },
     });
 
     return res.json({ items });
@@ -38,12 +39,12 @@ export async function eventTypesRoutes(app) {
   // --- Admin: un singur tip după "type" ---
   app.get('/admin/event-types/:type', async (req, res) => {
     const user = await app.verifyAuth(req);
-    if (!user || user.role !== 'admin') {
+    if (!isAdminUser(user)) {
       return res.status(403).json({ error: 'Forbidden' });
     }
 
     const { type } = req.params;
-    const tpl = getEventTypeTemplateByType(type)
+    const tpl = await getEventTypeTemplateByType(type);
 
     if (!tpl) {
       return res.status(404).json({ error: 'Event type not found' });
@@ -59,7 +60,7 @@ export async function eventTypesRoutes(app) {
     const { type } = req.params;
 
     // doar admin are voie să modifice șabloanele globale
-    if (user?.role !== 'admin') {
+    if (!isAdminUser(user)) {
       return reply.code(403).send({ error: 'Forbidden' });
     }
 
@@ -123,6 +124,7 @@ export async function eventTypesRoutes(app) {
         data: {
           type,
           name: 'default', // important pentru @@unique([type, name])
+          label,
           briefJson,
           budgetJson,
         },
@@ -132,6 +134,7 @@ export async function eventTypesRoutes(app) {
       saved = await prisma.eventTypeTemplate.update({
         where: { id: existing.id },
         data: {
+          label,
           briefJson,
           budgetJson,
         },
@@ -142,7 +145,7 @@ export async function eventTypesRoutes(app) {
       ok: true,
       templateId: saved.id,
       type: saved.type,
-      // label-ul îl dăm din briefJson ca să fie consistent cu UI
+      // label-ul îl dăm explicit
       label,
       briefJson: saved.briefJson,
       budgetJson: saved.budgetJson,
@@ -153,7 +156,7 @@ export async function eventTypesRoutes(app) {
   app.get('/event-types', async (req, res) => {
     const items = await prisma.eventTypeTemplate.findMany({
       select: { type: true, label: true },
-      orderBy: { type: 'asc' }
+      orderBy: { type: 'asc' },
     });
 
     return res.json({ items });
