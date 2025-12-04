@@ -3,7 +3,8 @@ import { NextResponse } from "next/server";
 const EVENTS_URL = process.env.EVENTS_INTERNAL_URL || "http://localhost:4002";
 
 export async function GET(req, { params }) {
-  const { token } = params;
+  const p = await params;
+  const { token } = p;
 
   const r = await fetch(`${EVENTS_URL}/guestbook/public/${token}`);
   const txt = await r.text();
@@ -16,7 +17,8 @@ export async function GET(req, { params }) {
 }
 
 export async function POST(req, { params }) {
-  const { token } = params;
+  const p = await params;
+  const { token } = p;
   const body = await req.text();
 
   const r = await fetch(`${EVENTS_URL}/guestbook/public/${token}/messages`, {

@@ -44,6 +44,13 @@ export default fp(async function meGroupsRoutes(fastify, opts) {
                   city: true,
                 },
               },
+              serviceOffer: {
+                include: {
+                  tags: {
+                    include: { tag: true },
+                  },
+                },
+              },
             },
           },
           _count: {
@@ -52,8 +59,9 @@ export default fp(async function meGroupsRoutes(fastify, opts) {
             },
           },
         },
-        orderBy: { createdAt: 'desc' },
+        orderBy: { createdAt: "desc" },
       });
+
 
 
       // 2) Grupuri în care sunt membru (pe baza providerProfileId, NU userId)
@@ -180,7 +188,7 @@ export default fp(async function meGroupsRoutes(fastify, opts) {
   );
 
   // POST /v1/providers/me/groups – grup nou (owner = provider-ul curent)
-    // POST /v1/providers/me/groups – grup nou (owner = provider-ul curent)
+  // POST /v1/providers/me/groups – grup nou (owner = provider-ul curent)
   fastify.post(
     '/v1/providers/me/groups',
     {
@@ -224,17 +232,17 @@ export default fp(async function meGroupsRoutes(fastify, opts) {
           members:
             Array.isArray(members) && members.length
               ? {
-                  create: members.map((m) => ({
-                    providerProfileId: Number(m.providerProfileId),
-                    serviceOfferId: Number(m.serviceOfferId),
-                    role: m.role || 'MEMBER',
-                    specializationTag: m.specializationTag || null,
-                    isActive: m.isActive ?? true,
-                    shareMode: m.shareMode || 'NONE',
-                    shareValue:
-                      m.shareValue != null ? Number(m.shareValue) : null,
-                  })),
-                }
+                create: members.map((m) => ({
+                  providerProfileId: Number(m.providerProfileId),
+                  serviceOfferId: Number(m.serviceOfferId),
+                  role: m.role || 'MEMBER',
+                  specializationTag: m.specializationTag || null,
+                  isActive: m.isActive ?? true,
+                  shareMode: m.shareMode || 'NONE',
+                  shareValue:
+                    m.shareValue != null ? Number(m.shareValue) : null,
+                })),
+              }
               : undefined,
         },
         include: {
@@ -287,7 +295,7 @@ export default fp(async function meGroupsRoutes(fastify, opts) {
       const { name, description, isActive, members, sharePolicy } =
         request.body || {};
 
-        const updated = await prisma.$transaction(async (tx) => {
+      const updated = await prisma.$transaction(async (tx) => {
         await tx.providerGroup.update({
           where: { id },
           data: {
@@ -465,7 +473,7 @@ export default fp(async function meGroupsRoutes(fastify, opts) {
     }
   );
 
-    // 🔹 NOU – membrul își poate părăsi singur grupul
+  // 🔹 NOU – membrul își poate părăsi singur grupul
   // POST /v1/providers/me/group-memberships/:id/leave
   fastify.post('/v1/providers/me/group-memberships/:id/leave',
     {

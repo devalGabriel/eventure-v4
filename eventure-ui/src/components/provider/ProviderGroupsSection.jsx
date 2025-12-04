@@ -54,6 +54,7 @@ export default function ProviderGroupsSection() {
     members: [],
   });
 
+  console.log("group form members", groupForm.members)
   // căutare membri
   const [memberSearch, setMemberSearch] = useState("");
   const [memberResults, setMemberResults] = useState([]);
@@ -65,7 +66,7 @@ export default function ProviderGroupsSection() {
   const [selectedServiceByProfile, setSelectedServiceByProfile] = useState({});
 
   const pathname = usePathname();
-
+  
   useEffect(() => {
     let mounted = true;
     async function load() {
@@ -237,6 +238,7 @@ export default function ProviderGroupsSection() {
     const service = services.find(
       (s) => Number(s.id) === Number(selectedServiceId)
     );
+    
     if (!service) return;
 
     const specializationTag =
@@ -303,6 +305,7 @@ export default function ProviderGroupsSection() {
                 : Number(m.shareValue),
           })),
       };
+      console.log("Submitting group payload:", payload);
 
       let result;
       if (groupForm.id) {
@@ -606,6 +609,7 @@ export default function ProviderGroupsSection() {
                     serviceOptionsByProfile[providerProfileId] || [];
                   const selectedServiceId =
                     selectedServiceByProfile[providerProfileId] || "";
+                    console.log("services:", services);
                   const already =
                     selectedServiceId &&
                     groupForm.members.some(
@@ -614,7 +618,7 @@ export default function ProviderGroupsSection() {
                           Number(providerProfileId) &&
                         Number(m.serviceOfferId) === Number(selectedServiceId)
                     );
-
+                    
                   return (
                     <Box
                       key={`${u.providerProfileId}-${u.userId}`}
@@ -690,7 +694,7 @@ export default function ProviderGroupsSection() {
                             ) : (
                               services.map((s) => (
                                 <MenuItem key={s.id} value={s.id}>
-                                  {s.title}
+                                  {s.title || s.name || `Serviciu #${s.id}`}
                                 </MenuItem>
                               ))
                             )}

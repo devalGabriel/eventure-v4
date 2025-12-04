@@ -186,20 +186,26 @@ export async function searchGroupMembers(params = {}) {
 }
 
 // 🔹 NOI – servicii ale unui provider (pentru membri de grup)
+// ✅ nou – aduce ServiceOffer, nu pachete
 export async function getProviderServices(providerProfileId) {
   const search = new URLSearchParams();
   if (providerProfileId) {
-    search.set('providerProfileId', String(providerProfileId));
+    search.set("providerProfileId", String(providerProfileId));
   }
   const query = search.toString();
-  const url = `/api/providers/me/packages`;
+
+  const url = `/api/providers/me/group-members/services${
+    query ? `?${query}` : ""
+  }`;
 
   const res = await fetch(url, {
-    method: 'GET',
-    credentials: 'include',
+    method: "GET",
+    credentials: "include",
   });
+
   return handleResponse(res);
 }
+
 
 // --- Admin ---
 

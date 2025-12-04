@@ -89,40 +89,35 @@ model Event {
 }
 
 model EventGuestbookToken {
-  id        String   @id @default(cuid())
-  eventId   String
-  token     String   @unique
+  id      String @id @default(cuid())
+  eventId String
+  token   String @unique
 
-  type      GuestbookTokenType
-  status    GuestbookTokenStatus @default(ACTIVE)
+  type   GuestbookTokenType
+  status GuestbookTokenStatus @default(ACTIVE)
 
-  // legare opțională de participant
-  participantUserId String?
-  participantRole   ParticipantRole?
-  email             String?
-  nameHint          String?   // ex. "Nașii", "Familia Ionescu"
+  participantId String?
+  email        String?
+  nameHint     String?
 
-  // control trafic
-  maxUses   Int?      // null = nelimitat
-  usedCount Int       @default(0)
+  maxUses   Int?
+  usedCount Int      @default(0)
   expiresAt DateTime?
 
-  // permisiuni
-  canRead   Boolean   @default(true)
-  canWrite  Boolean   @default(true)
+  canRead  Boolean @default(true)
+  canWrite Boolean @default(true)
 
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   event Event @relation(fields: [eventId], references: [id])
 
-  // 🔗 relație compusă cu EventParticipant
-  participant EventParticipant? @relation(fields: [eventId, participantUserId, participantRole], references: [eventId, userId, role])
+  participant EventParticipant? @relation(fields: [participantId], references: [id])
 
   entries EventGuestbookEntry[]
 
   @@index([eventId])
-  @@index([participantUserId, participantRole])
+  @@index([participantId])
   @@index([email])
 }
 
@@ -291,22 +286,28 @@ model EventAttachment {
 }
 
 model EventParticipant {
-  eventId  String
-  userId   String
-  role     ParticipantRole
-  status   ParticipantStatus @default(ACCEPTED)
+  id      String @id @default(cuid())
+  eventId String
 
-  event    Event @relation(fields: [eventId], references: [id])
+  userId String?
+  email  String?
+  phone  String?
+  name   String
+
+  role   ParticipantRole  @default(CLIENT)
+  status ParticipantStatus @default(INVITED)
+
+  event  Event @relation(fields: [eventId], references: [id])
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   guestBookTokens EventGuestbookToken[]
 
-  @@id([eventId, userId, role])
-  @@index([userId, role])
+  @@index([eventId])
+  @@index([userId])
+  @@index([email])
 }
-
 
 model EventTypeTemplate {
   id          String   @id @default(cuid())

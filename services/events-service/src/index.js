@@ -26,6 +26,7 @@ import eventNeedsRoutes from './routes/eventNeeds.js';
 import guestbookRoutes from "./routes/guestbook.js";
 import guestbookTokensRoutes from "./routes/guestbookTokens.js";
 import guestbookPublicRoutes from "./routes/guestbookPublic.js";
+import eventParticipantsRoutes from "./routes/participants.js";
 
 // auth util
 import { verifyAuthFactory } from './middlewares/auth.js';
@@ -91,6 +92,7 @@ if (eventNeedsRoutes) eventNeedsRoutes(app);
 if (guestbookRoutes) guestbookRoutes(app);
 if (guestbookTokensRoutes) guestbookTokensRoutes(app);
 if (guestbookPublicRoutes) guestbookPublicRoutes(app);
+if (eventParticipantsRoutes) eventParticipantsRoutes(app);
 
 // health
 app.get('/health', (_req, res) => res.json({ ok: true }));

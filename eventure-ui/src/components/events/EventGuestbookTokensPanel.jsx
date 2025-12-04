@@ -119,31 +119,39 @@ export default function EventGuestbookTokensPanel({ event }) {
   }
 
     async function handleCreateParticipantToken() {
-    if (!selectedParticipant) return;
-    try {
-      setCreating(true);
-      const payload = {
-        type: "PARTICIPANT",
-        canRead: true,
-        canWrite: true,
-        maxUses: 1,
-        participantId: selectedParticipant.id,
-        nameHint:
-          selectedParticipant.name ||
-          selectedParticipant.fullName ||
-          selectedParticipant.email ||
-          null,
-      };
-      await createGuestbookToken(event.id, payload);
-      await load();
-      notify("Link de guestbook creat pentru invitat.", "success");
-    } catch (e) {
-      console.error("createGuestbookToken PARTICIPANT error:", e);
-      notify("Nu s-a putut crea linkul pentru participant.", "error");
-    } finally {
-      setCreating(false);
-    }
+  if (!selectedParticipant) return;
+  try {
+    setCreating(true);
+    const payload = {
+      type: "PARTICIPANT",
+      canRead: true,
+      canWrite: true,
+      maxUses: 1,
+      // backend-ul are nevoie de userId + role ca să lege tokenul de EventParticipant
+      participantUserId:
+        selectedParticipant.userId ||
+        selectedParticipant.user?.id ||
+        null,
+      participantRole: selectedParticipant.role || "CLIENT",
+      nameHint:
+        selectedParticipant.name ||
+        selectedParticipant.user?.name ||
+        selectedParticipant.email ||
+        selectedParticipant.user?.email ||
+        null,
+    };
+
+    await createGuestbookToken(event.id, payload);
+    await load(); // reload tokens
+    notify("Link de guestbook creat pentru invitat.", "success");
+  } catch (e) {
+    console.error("createGuestbookToken PARTICIPANT error:", e);
+    notify("Nu s-a putut crea linkul pentru participant.", "error");
+  } finally {
+    setCreating(false);
   }
+}
+
 
     async function handleCreateEmailToken() {
     const email = emailAddress.trim();

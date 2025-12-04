@@ -1,3 +1,0 @@
--- AlterTable
-ALTER TABLE `event` ADD COLUMN `currency` VARCHAR(191) NOT NULL DEFAULT 'RON',
-    ADD COLUMN `notes` TEXT NULL;

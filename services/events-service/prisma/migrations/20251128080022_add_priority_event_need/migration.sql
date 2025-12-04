@@ -1,3 +1,0 @@
--- AlterTable
-ALTER TABLE `eventneed` ADD COLUMN `mustHave` BOOLEAN NOT NULL DEFAULT true,
-    ADD COLUMN `priority` ENUM('LOW', 'MEDIUM', 'HIGH') NOT NULL DEFAULT 'MEDIUM';

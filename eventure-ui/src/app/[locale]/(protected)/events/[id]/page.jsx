@@ -50,6 +50,7 @@ import GapsAnalysisPanel from "@/components/events/GapsAnalysisPanel";
 import GuestbookPanel from "@/components/events/GuestbookPanel";
 import EventGuestbookTokensPanel from "@/components/events/EventGuestbookTokensPanel";
 import EventGuestbookPanel from "@/components/events/EventGuestbookPanel";
+import EventParticipantsPanel from "@/components/events/EventParticipantsPanel";
 
 const statusOptions = ["DRAFT", "PLANNING", "ACTIVE", "COMPLETED", "CANCELED"];
 const taskStatusColor = (s) =>
@@ -193,7 +194,7 @@ export default function EventDetailsPage() {
         <Tab label="Selected providers" />
         <Tab label="Messages" />
         <Tab label="Files" />
-        <Tab label="Guestbook" />
+        <Tab label="Invitați & Guestbook" />
       </Tabs>
 
       <Divider />
@@ -214,7 +215,12 @@ export default function EventDetailsPage() {
       {tab === 5 && <MessagesTab eventId={event.id} />}
       {tab === 6 && <FilesTab eventId={event.id} />}
       {tab === 7 && (
-        <GuestbookPanel eventId={event.id} />
+        <Stack spacing={2}>
+          <EventParticipantsPanel event={event} />
+          <EventGuestbookTokensPanel event={event} />
+          <GuestbookPanel eventId={event.id} />
+          <EventGuestbookPanel eventId={event.id} />
+        </Stack>
       )}
     </Stack>
   );
@@ -1031,12 +1037,10 @@ function BriefTab({ event }) {
             <BudgetEstimatePanel eventId={event.id} />
           </Box>
           <Box sx={{ mt: 3 }}>
-  <EventGuestbookPanel eventId={event.id} />
 </Box>
         </Stack>
       </CardContent>
       <Box sx={{ mt: 3 }}>
-  <EventGuestbookTokensPanel event={event} />
 </Box>
       <Dialog
         open={openRecommendDialog}

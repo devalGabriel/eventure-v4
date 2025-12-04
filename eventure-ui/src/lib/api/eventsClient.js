@@ -188,10 +188,45 @@ export async function getEventGuestbook(eventId) {
 
 // --- Participanți eveniment (pentru tokenuri PARTICIPANT) ---
 export async function getEventParticipants(eventId) {
-  const r = await fetch(`/api/events/${eventId}/participants`, {
+  const res = await fetch(`/api/events/${eventId}/participants`, {
     cache: "no-store",
   });
-  const txt = await r.text();
-  if (!r.ok) throw new Error(txt || "Failed event participants");
-  return txt ? JSON.parse(txt) : [];
+  const txt = await res.text();
+  if (!res.ok) {
+    throw new Error(txt || "Failed to load participants");
+  }
+  const data = txt ? JSON.parse(txt) : [];
+  return Array.isArray(data) ? data : data.participants || [];
+}
+
+export async function createEventParticipant(eventId, payload) {
+  const res = await fetch(`/api/events/${eventId}/participants`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  const txt = await res.text();
+  if (!res.ok) {
+    throw new Error(txt || "Failed to create participant");
+  }
+  return txt ? JSON.parse(txt) : null;
+}
+
+export async function deleteEventParticipant(
+  eventId,
+  userId,
+  role = "CLIENT"
+) {
+  const params = new URLSearchParams({ role });
+  const res = await fetch(
+    `/api/events/${eventId}/participants/${encodeURIComponent(
+      userId
+    )}?${params.toString()}`,
+    { method: "DELETE" }
+  );
+  const txt = await res.text();
+  if (!res.ok) {
+    throw new Error(txt || "Failed to delete participant");
+  }
+  return txt ? JSON.parse(txt) : null;
 }

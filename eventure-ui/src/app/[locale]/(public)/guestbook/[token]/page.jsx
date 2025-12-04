@@ -20,7 +20,7 @@ import {
   getPublicGuestbook,
   postPublicGuestbookMessage,
 } from "@/lib/api/eventsClient";
-import { useNotify } from "@/components/common/NotifyProvider";
+import { useNotify } from "@/components/providers/NotificationProvider";
 
 export default function PublicGuestbookPage() {
   const { token } = useParams();

@@ -23,7 +23,7 @@ import {
   postGuestbookEntry,
   deleteGuestbookEntry,
 } from "@/lib/api/eventsClient";
-import { useNotify } from "@/components/common/NotifyProvider";
+import { useNotify } from "../providers/NotificationProvider";
 
 export default function GuestbookPanel({ eventId }) {
   const { notify } = useNotify();

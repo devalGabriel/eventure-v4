@@ -14,7 +14,7 @@ import {
   Typography,
 } from "@mui/material";
 import { getEventGuestbook } from "@/lib/api/eventsClient";
-import { useNotify } from "@/components/common/NotifyProvider";
+import { useNotify } from "../providers/NotificationProvider";
 
 export default function EventGuestbookPanel({ eventId }) {
   const { notify } = useNotify();
