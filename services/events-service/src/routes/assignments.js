@@ -11,6 +11,7 @@ import {
   getUserId,
 } from '../services/authz.js';
 import { sendNotification } from '../services/notificationsClient.js';
+import { enqueueDomainEvent } from '../services/outbox.js';
 
 function makeReply(res) {
   const f = (body) => res.json(body);
@@ -98,14 +99,18 @@ export function assignmentsRoutes(app) {
       },
     });
 
-    let result;
-    if (existing) {
+        let result;
+    const isUpdate = !!existing;
+
+    if (isUpdate) {
       result = await prisma.eventProviderAssignment.update({
         where: { id: existing.id },
         data: {
           status,
           sourceOfferId,
           notes: body.notes ?? existing.notes,
+          // dacă ai adăugat version în schema:
+          // version: { increment: 1 },
         },
       });
     } else {
@@ -121,7 +126,24 @@ export function assignmentsRoutes(app) {
       });
     }
 
-    return reply.code(existing ? 200 : 201).send(result);
+    await enqueueDomainEvent({
+      aggregateType: "EventProviderAssignment",
+      aggregateId: result.id,
+      type: isUpdate
+        ? "events.precontract.assignment.updated"
+        : "events.precontract.assignment.created",
+      payload: {
+        eventId,
+        assignmentId: result.id,
+        providerId: result.providerId,
+        providerGroupId: result.providerGroupId,
+        status: result.status,
+        sourceOfferId: result.sourceOfferId,
+      },
+    });
+
+    return reply.code(isUpdate ? 200 : 201).send(result);
+
   });
 
   // LIST pe eveniment (client owner, provider implicat, admin)
@@ -187,10 +209,26 @@ export function assignmentsRoutes(app) {
       );
     }
 
-    const updated = await prisma.eventProviderAssignment.update({
+        const updated = await prisma.eventProviderAssignment.update({
       where: { id },
-      data: { status },
+      data: {
+        status,
+        version: { increment: 1 }, // dacă ai version în schema
+      },
     });
+
+    await enqueueDomainEvent({
+      aggregateType: "EventProviderAssignment",
+      aggregateId: updated.id,
+      type: "events.precontract.assignment.statusChanged",
+      payload: {
+        eventId: updated.eventId,
+        assignmentId: updated.id,
+        fromStatus: asg.status,
+        toStatus: updated.status,
+      },
+    });
+
 
     // notificăm providerul la SELECTED / CONFIRMED_PRE_CONTRACT
     if (status === 'SELECTED' || status === 'CONFIRMED_PRE_CONTRACT') {

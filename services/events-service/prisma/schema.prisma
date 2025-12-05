@@ -45,6 +45,12 @@ enum AssignmentStatus {
   CONFIRMED_PRE_CONTRACT
 }
 
+enum OutboxStatus {
+  PENDING
+  PROCESSING
+  SENT
+  FAILED
+}
 enum GuestbookTokenType {
   GENERIC      // link public, share-uibil la toți
   PARTICIPANT  // legat de un participant din EventParticipant
@@ -55,6 +61,29 @@ enum GuestbookTokenStatus {
   ACTIVE
   REVOKED
   EXPIRED
+}
+
+model IntegrationEventOutbox {
+  id            String       @id @default(cuid())
+
+  /// tipul agregatului – ex: "EventOffer", "EventInvitation"
+  aggregateType String
+  /// ID-ul concret al agregatului – ex: offerId, invitationId
+  aggregateId   String
+
+  /// numele evenimentului – ex: "events.precontract.offer.created"
+  type          String
+  payload       Json
+
+  status        OutboxStatus @default(PENDING)
+  attempts      Int          @default(0)
+  lastError     String?
+
+  scheduledAt   DateTime     @default(now())
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  @@index([status, scheduledAt])
 }
 
 model Event {
@@ -74,6 +103,8 @@ model Event {
   status      EventStatus      @default(DRAFT)
   createdAt   DateTime         @default(now())
   updatedAt   DateTime         @updatedAt
+
+  version     Int              @default(1)
 
   tasks        EventTask[]
   messages     EventMessage[]
@@ -162,6 +193,8 @@ model EventNeed {
 
   offersDeadline DateTime?        // până când se pot trimite/accepta oferte pe acest need
   locked         Boolean          @default(false) // true = nu mai poate fi editat/deleted în UI
+
+  version        Int               @default(1)
 
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
@@ -258,6 +291,8 @@ model EventProviderAssignment {
   status          AssignmentStatus @default(SHORTLISTED)
   sourceOfferId   String?
   notes           String?          @db.Text
+
+  version         Int              @default(1)
 
   createdAt       DateTime         @default(now())
   updatedAt       DateTime         @updatedAt

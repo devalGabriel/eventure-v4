@@ -12,6 +12,7 @@ import {
   isClientUser,
   getUserId,
 } from '../services/authz.js';
+import { enqueueDomainEvent } from '../services/outbox.js';
 
 // adapter mic pentru a păstra semantica Fastify reply pe Express
 function makeReply(res) {
@@ -59,8 +60,8 @@ async function applyOfferAcceptedCascade(offerId, decision) {
       },
     });
 
-    if (needId) {
-      // 2) Blocăm toate celelalte oferte pentru același need
+        if (needId) {
+      // 2) Blocăm celelalte oferte
       await tx.eventOffer.updateMany({
         where: {
           id: { not: offer.id },
@@ -80,6 +81,42 @@ async function applyOfferAcceptedCascade(offerId, decision) {
         where: { id: needId },
         data: { locked: true },
       });
+    }
+
+    // 4) SAGA light: ne asigurăm că există un assignment SELECTED
+    const providerId = offer.providerId || null;
+    const providerGroupId = offer.providerGroupId || null;
+
+    if (providerId || providerGroupId) {
+      const existingAssignment = await tx.eventProviderAssignment.findFirst({
+        where: {
+          eventId: offer.eventId,
+          providerId: providerId || undefined,
+          providerGroupId: providerGroupId || undefined,
+        },
+      });
+
+      if (existingAssignment) {
+        await tx.eventProviderAssignment.update({
+          where: { id: existingAssignment.id },
+          data: {
+            status: 'SELECTED',
+            sourceOfferId: offer.id,
+            // version: { increment: 1 }, // dacă ai version
+          },
+        });
+      } else {
+        await tx.eventProviderAssignment.create({
+          data: {
+            eventId: offer.eventId,
+            providerId,
+            providerGroupId,
+            status: 'SELECTED',
+            sourceOfferId: offer.id,
+            notes: offer.notes || null,
+          },
+        });
+      }
     }
 
     return updated;
@@ -205,12 +242,28 @@ export async function offersRoutes(app) {
       source: 'GENERIC',
     });
 
+    await enqueueDomainEvent({
+      aggregateType: 'EventOffer',
+      aggregateId: created.id,
+      type: 'events.precontract.offer.created',
+      payload: {
+        eventId,
+        offerId: created.id,
+        providerId: created.providerId,
+        providerGroupId: created.providerGroupId,
+        needId: created.needId,
+        totalCost: created.totalCost,
+        currency: created.currency,
+        version: created.version,
+        source: 'GENERIC',
+      },
+    });
+
     return reply.code(201).send(normalizeOfferForResponse(created));
   });
 
   // Provider: creează o ofertă ca răspuns la o invitație
-  app.post(
-    '/events/:eventId/invitations/:invitationId/offers',
+  app.post('/events/:eventId/invitations/:invitationId/offers',
     async (req, res) => {
       const reply = makeReply(res);
       const user = await app.verifyAuth(req);
@@ -313,6 +366,24 @@ export async function offersRoutes(app) {
         totalCost: created.totalCost,
         currency: created.currency,
         source: 'INVITATION',
+      });
+
+      await enqueueDomainEvent({
+        aggregateType: 'EventOffer',
+        aggregateId: created.id,
+        type: 'events.precontract.offer.created',
+        payload: {
+          eventId,
+          invitationId,
+          offerId: created.id,
+          providerId: created.providerId,
+          providerGroupId: created.providerGroupId,
+          needId: created.needId,
+          totalCost: created.totalCost,
+          currency: created.currency,
+          version: created.version,
+          source: 'INVITATION',
+        },
       });
 
       return reply.code(201).send(normalizeOfferForResponse(created));
@@ -586,6 +657,27 @@ export async function offersRoutes(app) {
       providerId: updated.providerId,
       decision: normalizedDecision,
     });
+
+            const isAcceptedDomainConst = OFFER_ACCEPT_STATUSES.includes(normalizedDecision);
+
+    await enqueueDomainEvent({
+      aggregateType: "EventOffer",
+      aggregateId: updated.id,
+      type: isAcceptedDomainConst
+        ? "events.precontract.offer.accepted"
+        : "events.precontract.offer.updated",
+      payload: {
+        eventId: updated.eventId,
+        offerId: updated.id,
+        providerId: updated.providerId,
+        providerGroupId: updated.providerGroupId,
+        needId: updated.needId,
+        status: updated.status,
+        decision: normalizedDecision,
+        version: updated.version,
+      },
+    });
+
 
     const event = await prisma.event.findUnique({
       where: { id: updated.eventId },

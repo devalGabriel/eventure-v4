@@ -12,7 +12,8 @@
     "prisma:migrate": "prisma migrate dev --name init_events",
     "prisma:deploy": "prisma migrate deploy",
     "seed": "node prisma/seed.js",
-    "db:reset": "prisma migrate reset --force && npm run seed"
+    "db:reset": "prisma migrate reset --force && npm run seed",
+    "outbox:worker": "node src/workers/outboxWorker.js"
   },
   "dependencies": {
     "@fastify/cors": "^11.1.0",

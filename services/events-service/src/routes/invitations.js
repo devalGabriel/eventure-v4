@@ -6,6 +6,7 @@ import {
 } from "../services/eventsAccess.js";
 import { auditEvent } from "../services/audit.js";
 import { isAdminUser, getUserId } from "../services/authz.js";
+import { enqueueDomainEvent } from "../services/outbox.js"; // 👈 nou
 
 function makeReply(res) {
   const f = (body) => res.json(body);
@@ -152,6 +153,25 @@ export async function invitationsRoutes(app) {
       proposedBudget: inv.proposedBudget,
       budgetCurrency: inv.budgetCurrency,
     });
+    await enqueueDomainEvent({
+      aggregateType: "EventInvitation",
+      aggregateId: inv.id,
+      type: "events.precontract.invitation.created",
+      payload: {
+        eventId: ev.id,
+        invitationId: inv.id,
+        clientId: inv.clientId,
+        providerId: inv.providerId,
+        providerGroupId: inv.providerGroupId,
+        needId: inv.needId,
+        replyDeadline: inv.replyDeadline,
+        proposedBudget: inv.proposedBudget,
+        budgetCurrency: inv.budgetCurrency,
+        status: inv.status,
+        source: "SINGLE",
+      },
+    });
+
 
     return reply.send(inv);
   });
@@ -240,6 +260,25 @@ export async function invitationsRoutes(app) {
         createdCount: result.count ?? toCreate.length,
         skippedCount: ids.length - toCreate.length,
         totalRequested: ids.length,
+      });
+
+            await enqueueDomainEvent({
+        aggregateType: "Event",
+        aggregateId: ev.id,
+        type: "events.precontract.invitation.bulkCreated",
+        payload: {
+          eventId: ev.id,
+          clientId: ev.clientId,
+          providerIds: toCreate, // lista efectivă de providerIds create
+          needId: needId || null,
+          proposedBudget:
+            proposedBudget != null && proposedBudget !== ""
+              ? Number(proposedBudget)
+              : null,
+          budgetCurrency: budgetCurrency || ev.currency || null,
+          createdCount: result.count ?? toCreate.length,
+          totalRequested: ids.length,
+        },
       });
 
       return reply.send({
@@ -396,6 +435,22 @@ export async function invitationsRoutes(app) {
       invitationId: inv.id,
       providerId: inv.providerId,
       decision: normalized,
+    });
+
+        await enqueueDomainEvent({
+      aggregateType: "EventInvitation",
+      aggregateId: inv.id,
+      type: "events.precontract.invitation.decision",
+      payload: {
+        eventId: inv.eventId,
+        invitationId: inv.id,
+        providerId: inv.providerId,
+        providerGroupId: inv.providerGroupId,
+        needId: inv.needId,
+        decision: normalized,
+        status: upd.status,
+        decidedAt: upd.decidedAt,
+      },
     });
 
     // logica de buget la ACCEPTED se face la nivel de OFFER, nu de invitație
